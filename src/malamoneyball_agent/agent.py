@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 import requests
 from agents import Agent, Runner, SQLiteSession, function_tool
 from dotenv import load_dotenv
-from pydantic import TypeAdapter
+from pydantic import ValidationError
 
 from malamoneyball_agent.models import NFLPlayerProjection
 
@@ -94,9 +94,24 @@ def fetch_razzball_projections(
     response = requests.get(url, headers=headers, timeout=30)
     response.raise_for_status()
 
-    projections = TypeAdapter(list[NFLPlayerProjection]).validate_python(
-        response.json()["projections"]
-    )
+    # Validate row by row so one malformed player doesn't sink the whole week.
+    rows = response.json()["projections"]
+    projections = []
+    first_error: ValidationError | None = None
+    for row in rows:
+        try:
+            projections.append(NFLPlayerProjection.model_validate(row))
+        except ValidationError as error:
+            first_error = first_error or error
+
+    # Every row failing means the response format changed, not an empty week.
+    if first_error and not projections:
+        problem = first_error.errors()[0]
+        field = ".".join(str(part) for part in problem["loc"])
+        raise RuntimeError(
+            f"Razzball returned projections, but none of the {len(rows)} players "
+            f"could be read (e.g. {field}: {problem['msg']})."
+        )
 
     if position:
         projections = [
