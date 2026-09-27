@@ -23,3 +23,6 @@ coverage.xml
 .DS_Store
 .vscode/
 .idea/
+
+# Local chat history
+sessions.db*
