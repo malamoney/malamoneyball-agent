@@ -14,6 +14,9 @@ from pydantic import ValidationError
 from malamoneyball_agent.models import NFLPlayerProjection
 
 MODEL = "gpt-6-luna"
+# Chat history is kept in this file (in the directory the agent is started
+# from) so a conversation survives restarting the agent.
+SESSION_DB_PATH = "sessions.db"
 RAZZBALL_URL = "https://api.razzball.com/nfl/projections/weekly/{season}/{week}"
 
 # A week's projections are ~1,400 players, so repeat questions about the same
@@ -209,14 +212,17 @@ def main():
             "OPENAI_API_KEY is not set. Add it to the .env file in the project root."
         )
 
-    session = SQLiteSession("mini-agent")
+    session = SQLiteSession("mini-agent", SESSION_DB_PATH)
     print("Mini agent ready. Type 'exit' to quit.")
-    while True:
-        user_input = input("\nYou: ")
-        if user_input.strip().lower() in ("exit", "quit"):
-            break
-        result = Runner.run_sync(agent, user_input, session=session)
-        print(f"\nAgent: {result.final_output}")
+    try:
+        while True:
+            user_input = input("\nYou: ")
+            if user_input.strip().lower() in ("exit", "quit"):
+                break
+            result = Runner.run_sync(agent, user_input, session=session)
+            print(f"\nAgent: {result.final_output}")
+    finally:
+        session.close()
 
 
 if __name__ == "__main__":
