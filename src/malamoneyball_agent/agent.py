@@ -1,4 +1,7 @@
-"""Level 2: OpenAI Agents SDK. Your functions, their loop. Sessions give you memory for free."""
+"""A fantasy football assistant for the terminal, built on the OpenAI Agents SDK.
+
+It answers lineup questions from Razzball's weekly projections.
+"""
 
 import os
 import sys
@@ -13,7 +16,8 @@ from pydantic import ValidationError
 
 from malamoneyball_agent.models import NFLPlayerProjection
 
-MODEL = "gpt-6-luna"
+# Used when OPENAI_MODEL isn't set.
+DEFAULT_MODEL = "gpt-6-luna"
 # Chat history is kept in this file (in the directory the agent is started
 # from) so a conversation survives restarting the agent.
 SESSION_DB_PATH = "sessions.db"
@@ -202,24 +206,32 @@ def fetch_razzball_projections(
     ]
 
 
-@function_tool
-def say_hello(name: str) -> str:
-    """Say hello when user says their name"""
-    return f"Hello {name}"
-
-
 # -------- the agent: system prompt + tools, the SDK runs the loop --------
 
-agent = Agent(
-    name="Mini coding agent",
-    instructions=(
-        "You are a fantasy football expert agent running in the user's terminal. "
-        "Use your tools to complete the user's task, then briefly summarize what you did. "
-        # "The working directory is the folder the user launched you from."
-    ),
-    model=MODEL,
-    tools=[fetch_razzball_projections, say_hello],
-)
+INSTRUCTIONS = """\
+You are a fantasy football assistant running in the user's terminal. You help
+with lineup decisions using Razzball's weekly NFL projections.
+
+- Use the projections tool for any question about projected points. Never
+  guess numbers.
+- Assume PPR scoring unless the user names another format (standard,
+  half-PPR, DraftKings or FanDuel); then use that format's points.
+- For start/sit comparisons, look up every player involved, list each with
+  position, opponent and projected points, then give a clear recommendation.
+  Call differences under about one point a toss-up.
+- If a player can't be found, say so and suggest checking the spelling.
+- Keep answers short.
+"""
+
+
+def build_agent() -> Agent:
+    """Build the assistant, using the model named by OPENAI_MODEL if set."""
+    return Agent(
+        name="Fantasy football assistant",
+        instructions=INSTRUCTIONS,
+        model=os.getenv("OPENAI_MODEL") or DEFAULT_MODEL,
+        tools=[fetch_razzball_projections],
+    )
 
 
 def main():
@@ -229,8 +241,9 @@ def main():
             "OPENAI_API_KEY is not set. Add it to the .env file in the project root."
         )
 
+    assistant = build_agent()  # after load_dotenv, so .env can set OPENAI_MODEL
     session = SQLiteSession("mini-agent", SESSION_DB_PATH)
-    print("Mini agent ready. Type 'exit' to quit.")
+    print("Fantasy football assistant ready. Type 'exit' to quit.")
     try:
         while True:
             try:
@@ -241,7 +254,7 @@ def main():
             if user_input.strip().lower() in ("exit", "quit"):
                 break
             try:
-                result = Runner.run_sync(agent, user_input, session=session)
+                result = Runner.run_sync(assistant, user_input, session=session)
             except Exception as error:
                 # One failed turn (network, model, tool) shouldn't end the chat.
                 print(f"\nError: {error}", file=sys.stderr)
