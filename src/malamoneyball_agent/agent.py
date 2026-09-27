@@ -1,6 +1,7 @@
 """Level 2: OpenAI Agents SDK. Your functions, their loop. Sessions give you memory for free."""
 
 import os
+import sys
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -10,13 +11,6 @@ from dotenv import load_dotenv
 from pydantic import TypeAdapter
 
 from malamoneyball_agent.models import NFLPlayerProjection
-
-load_dotenv()  # reads OPENAI_API_KEY from the .env file in the project root
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    raise RuntimeError(
-        "OPENAI_API_KEY is not set. Add it to the .env file in the project root."
-    )
 
 MODEL = "gpt-6-luna"
 
@@ -137,6 +131,12 @@ agent = Agent(
 
 
 def main():
+    load_dotenv()  # reads API keys from the .env file in the project root
+    if not os.getenv("OPENAI_API_KEY"):
+        sys.exit(
+            "OPENAI_API_KEY is not set. Add it to the .env file in the project root."
+        )
+
     session = SQLiteSession("mini-agent")
     print("Mini agent ready. Type 'exit' to quit.")
     while True:
