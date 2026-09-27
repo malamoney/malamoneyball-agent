@@ -139,7 +139,24 @@ def fetch_razzball_projections(
     player_name: str = "",
     limit: int = 50,
 ) -> list[dict]:
-    """Fetch compact fantasy-football projections."""
+    """Fetch Razzball's weekly fantasy-football projections for NFL players.
+
+    Each player comes back with name, position, team, opponent, and projected
+    points for standard, half-PPR, PPR, DraftKings and FanDuel scoring. Results
+    are sorted by projected PPR points, highest first. Returns an empty list
+    when no week is given and the NFL regular season isn't under way.
+
+    Args:
+        season: Season year, e.g. "2026". Use "" for the current season.
+        week: Regular-season week, "1" to "18". Use "" for the current NFL week.
+        position: Only return players at this position (case-insensitive): QB,
+            RB, WR, TE, K, or DEF for team defenses; DL, LB and DB for
+            individual defensive players. Use "" for all positions.
+        player_name: Only return players whose name contains this text, a
+            case-insensitive match on any part of the name, e.g. "allen".
+            Use "" for all players.
+        limit: Maximum number of players to return, at most 100.
+    """
 
     razzball_api_key = os.getenv("RAZZBALL_API_KEY")
     if not razzball_api_key:
