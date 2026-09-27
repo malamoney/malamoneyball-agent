@@ -1,10 +1,6 @@
-import asyncio
-import json
 from datetime import date
-from unittest import mock
 
 import pytest
-from agents.tool_context import ToolContext
 
 from malamoneyball_agent import agent
 from malamoneyball_agent.agent import get_nfl_season, get_nfl_week
@@ -48,31 +44,16 @@ def test_get_nfl_season(day, season):
     assert get_nfl_season(day) == season
 
 
-def _fetch(arguments: dict) -> str:
-    """Invoke the projections tool with requests.get faked, and return the URL it fetched."""
-    tool = agent.fetch_razzball_projections
-    ctx = ToolContext(
-        context=None,
-        tool_name=tool.name,
-        tool_call_id="1",
-        tool_arguments=json.dumps(arguments),
-    )
-    with mock.patch.object(agent.requests, "get") as get:
-        get.return_value.json.return_value = {"projections": []}
-        asyncio.run(tool.on_invoke_tool(ctx, json.dumps(arguments)))
-    assert get.called, "tool did not make a request"
-    return get.call_args.args[0]
-
-
 @pytest.fixture
 def sunday_of_week_3(monkeypatch):
-    monkeypatch.setenv("RAZZBALL_API_KEY", "test-key")
     monkeypatch.setattr(agent, "_today", lambda: date(2026, 9, 27))
 
 
-def test_tool_defaults_to_current_season_and_week(sunday_of_week_3):
-    assert _fetch({}).endswith("/2026/3")
+def test_tool_defaults_to_current_season_and_week(sunday_of_week_3, call_projections_tool):
+    assert call_projections_tool({}).url.endswith("/2026/3")
 
 
-def test_tool_uses_current_season_when_only_week_given(sunday_of_week_3):
-    assert _fetch({"week": "5"}).endswith("/2026/5")
+def test_tool_uses_current_season_when_only_week_given(
+    sunday_of_week_3, call_projections_tool
+):
+    assert call_projections_tool({"week": "5"}).url.endswith("/2026/5")
