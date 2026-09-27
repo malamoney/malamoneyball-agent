@@ -49,7 +49,9 @@ def sunday_of_week_3(monkeypatch):
     monkeypatch.setattr(agent, "_today", lambda: date(2026, 9, 27))
 
 
-def test_tool_defaults_to_current_season_and_week(sunday_of_week_3, call_projections_tool):
+def test_tool_defaults_to_current_season_and_week(
+    sunday_of_week_3, call_projections_tool
+):
     assert call_projections_tool({}).url.endswith("/2026/3")
 
 

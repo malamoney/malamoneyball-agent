@@ -6,7 +6,7 @@ PARAMETERS = fetch_razzball_projections.params_json_schema["properties"]
 
 
 def described(parameter: str) -> str:
-    return PARAMETERS[parameter].get("description", "")
+    return str(PARAMETERS[parameter].get("description", ""))
 
 
 @pytest.mark.parametrize("parameter", list(PARAMETERS))
