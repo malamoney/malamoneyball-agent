@@ -19,7 +19,6 @@ if not OPENAI_API_KEY:
     )
 
 MODEL = "gpt-6-luna"
-RAZZBALL_API_KEY = "94694cfe-17ca-4f4b-862e-ff31b255cd1e"
 
 
 def get_nfl_week(current_date: date | None = None) -> int | None:
@@ -65,6 +64,12 @@ def fetch_razzball_projections(
 ) -> list[dict]:
     """Fetch compact fantasy-football projections."""
 
+    razzball_api_key = os.getenv("RAZZBALL_API_KEY")
+    if not razzball_api_key:
+        raise RuntimeError(
+            "RAZZBALL_API_KEY is not set. Add it to the .env file in the project root."
+        )
+
     if not week:
         nfl_week = get_nfl_week()
         if nfl_week is None:
@@ -74,7 +79,7 @@ def fetch_razzball_projections(
     url = f"http://api.razzball.com/nfl/projections/weekly/{season}/{week}"
     headers = {
         "Accept": "application/vnd.razzball.api",
-        "Razzball-Api-Key": "94694cfe-17ca-4f4b-862e-ff31b255cd1e",
+        "Razzball-Api-Key": razzball_api_key,
     }
 
     response = requests.get(url, headers=headers, timeout=30)
