@@ -216,11 +216,22 @@ def main():
     print("Mini agent ready. Type 'exit' to quit.")
     try:
         while True:
-            user_input = input("\nYou: ")
+            try:
+                user_input = input("\nYou: ")
+            except EOFError:  # Ctrl-D
+                print()
+                break
             if user_input.strip().lower() in ("exit", "quit"):
                 break
-            result = Runner.run_sync(agent, user_input, session=session)
+            try:
+                result = Runner.run_sync(agent, user_input, session=session)
+            except Exception as error:
+                # One failed turn (network, model, tool) shouldn't end the chat.
+                print(f"\nError: {error}", file=sys.stderr)
+                continue
             print(f"\nAgent: {result.final_output}")
+    except KeyboardInterrupt:  # Ctrl-C, at the prompt or mid-answer
+        print()
     finally:
         session.close()
 
