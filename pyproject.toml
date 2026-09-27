@@ -1,0 +1,21 @@
+[project]
+name = "malamoneyball-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Michael Malamud", email = "mike.malamud@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "openai-agents>=0.22.3",
+    "python-dotenv>=1.2.3",
+    "requests>=2.34.2",
+]
+
+[project.scripts]
+malamoneyball-agent = "malamoneyball_agent:main"
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
