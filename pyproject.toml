@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.scripts]
-malamoneyball-agent = "malamoneyball_agent:main"
+malamoneyball-agent = "malamoneyball_agent.agent:main"
 
 [build-system]
 requires = ["uv_build>=0.12.19,<0.13.0"]
