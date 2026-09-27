@@ -5,6 +5,7 @@ from typing import Any
 from unittest import mock
 
 import pytest
+import requests
 from agents.tool_context import ToolContext
 
 from malamoneyball_agent import agent
@@ -16,12 +17,34 @@ class ToolCall:
     output: Any
 
 
-@pytest.fixture
-def call_projections_tool(monkeypatch):
-    """Invoke the projections tool with requests.get faked to return `response`."""
-    monkeypatch.setenv("RAZZBALL_API_KEY", "test-key")
+class ProjectionsToolCaller:
+    """Invokes the projections tool against a fake Razzball.
 
-    def call(arguments: dict, response: dict | None = None) -> ToolCall:
+    One fake `requests.get` is shared across calls, so `requests_made` counts
+    network requests over the whole test.
+    """
+
+    def __init__(self) -> None:
+        self.get = mock.Mock()
+
+    @property
+    def requests_made(self) -> int:
+        return self.get.call_count
+
+    def __call__(
+        self,
+        arguments: dict,
+        response: dict | str | None = None,
+        status: int = 200,
+        error: Exception | None = None,
+    ) -> ToolCall:
+        body = response if response is not None else {"projections": []}
+        fake = requests.Response()
+        fake.status_code = status
+        fake._content = (body if isinstance(body, str) else json.dumps(body)).encode()
+        self.get.return_value = fake
+        self.get.side_effect = error
+
         tool = agent.fetch_razzball_projections
         ctx = ToolContext(
             context=None,
@@ -29,10 +52,19 @@ def call_projections_tool(monkeypatch):
             tool_call_id="1",
             tool_arguments=json.dumps(arguments),
         )
-        with mock.patch.object(agent.requests, "get") as get:
-            get.return_value.json.return_value = response or {"projections": []}
+        with mock.patch.object(agent.requests, "get", self.get):
             output = asyncio.run(tool.on_invoke_tool(ctx, json.dumps(arguments)))
-        assert get.called, f"tool did not make a request: {output}"
-        return ToolCall(url=get.call_args.args[0], output=output)
 
-    return call
+        url = self.get.call_args.args[0] if self.get.call_args else ""
+        return ToolCall(url=url, output=output)
+
+
+@pytest.fixture(autouse=True)
+def empty_projections_cache():
+    agent._projections_cache.clear()
+
+
+@pytest.fixture
+def call_projections_tool(monkeypatch) -> ProjectionsToolCaller:
+    monkeypatch.setenv("RAZZBALL_API_KEY", "test-key")
+    return ProjectionsToolCaller()
