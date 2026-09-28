@@ -1,0 +1,3 @@
+# Keep the agent in Python behind a FastAPI server
+
+The web app's React frontend talks to the existing Python agent through a FastAPI server, rather than the agent being rewritten in TypeScript as a single Next.js app. The Python agent already carries tested behaviour that would have to be rebuilt from scratch in a rewrite: the NFL week and season calendar, lenient parsing of Razzball rows, cached and error-checked projection downloads, and the tool description the model relies on. The terminal chat also stays, and it shares that agent code. We accept a two-language project, with a Python backend and a TypeScript frontend, in exchange.
