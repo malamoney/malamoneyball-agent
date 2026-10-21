@@ -134,6 +134,9 @@ uv run malamoneyball-web     # terminal 1
 cd web && npm run dev        # terminal 2
 ```
 
+GitHub runs all of these checks, for both the Python code and the web page, on
+every pull request and every push to `main` (see `.github/workflows/checks.yml`).
+
 The code lives in `src/malamoneyball_agent/`:
 
 - `assistant.py` builds the assistant: its projections tool, instructions and
