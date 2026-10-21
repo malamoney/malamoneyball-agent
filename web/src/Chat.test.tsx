@@ -1,9 +1,12 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 
 import type { AnswerEvent, AssistantApi, Message } from "./api";
 import { Chat } from "./Chat";
+import { installScreen, setScreenWidth } from "./test-screen";
+
+beforeEach(installScreen);
 
 /** An Answer stream the test feeds one event at a time. */
 function scriptedAnswer() {
@@ -429,4 +432,91 @@ it("deleting the last conversation leaves an empty new one", async () => {
   expect(sidebarTitles()).toEqual([]);
   expect(screen.queryByText("Josh Allen")).not.toBeInTheDocument();
   expect(screen.getByText(/Ask about this week's projections/)).toBeInTheDocument();
+});
+
+const drawerToggle = () => screen.getByRole("button", { name: "Conversations" });
+
+it("keeps the sidebar open, with no toggle, on a wide screen", async () => {
+  setup([QB, DEFENSE]);
+  await screen.findByText("Josh Allen");
+
+  expect(sidebar()).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Conversations" })).not.toBeInTheDocument();
+});
+
+it("collapses the sidebar behind a toggle on a narrow screen", async () => {
+  setScreenWidth(400);
+  const { user } = setup([QB, DEFENSE]);
+  await screen.findByText("Josh Allen");
+
+  expect(screen.queryByRole("navigation", { name: "Conversations" })).not.toBeInTheDocument();
+  expect(drawerToggle()).toHaveAttribute("aria-expanded", "false");
+
+  await user.click(drawerToggle());
+
+  expect(drawerToggle()).toHaveAttribute("aria-expanded", "true");
+  expect(sidebarTitles()).toEqual([QB.title, DEFENSE.title]);
+  await user.click(drawerToggle());
+  expect(screen.queryByRole("navigation", { name: "Conversations" })).not.toBeInTheDocument();
+});
+
+it("choosing a conversation from the collapsed sidebar opens it and closes the sidebar", async () => {
+  setScreenWidth(400);
+  const { api, user } = setup([QB, DEFENSE]);
+  await screen.findByText("Josh Allen");
+  await user.click(drawerToggle());
+
+  await user.click(within(sidebar()).getByRole("button", { name: DEFENSE.title }));
+
+  expect(api.openConversation).toHaveBeenLastCalledWith(DEFENSE.id);
+  expect(screen.queryByRole("navigation", { name: "Conversations" })).not.toBeInTheDocument();
+  expect(drawerToggle()).toHaveAttribute("aria-expanded", "false");
+});
+
+it("starting a new conversation from the collapsed sidebar closes it", async () => {
+  setScreenWidth(400);
+  const { user } = setup([QB]);
+  await screen.findByText("Josh Allen");
+  await user.click(drawerToggle());
+
+  await user.click(within(sidebar()).getByRole("button", { name: "New Conversation" }));
+
+  expect(screen.queryByRole("navigation", { name: "Conversations" })).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Question")).toHaveFocus();
+});
+
+it("escape closes the collapsed sidebar and returns to its toggle", async () => {
+  setScreenWidth(400);
+  const { user } = setup([QB]);
+  await screen.findByText("Josh Allen");
+  await user.click(drawerToggle());
+  within(sidebar()).getByRole("button", { name: "New Conversation" }).focus();
+
+  await user.keyboard("{Escape}");
+
+  expect(screen.queryByRole("navigation", { name: "Conversations" })).not.toBeInTheDocument();
+  expect(drawerToggle()).toHaveFocus();
+});
+
+it("escape in a delete dialog in the collapsed sidebar keeps the sidebar open", async () => {
+  setScreenWidth(400);
+  const { user } = setup([QB]);
+  await screen.findByText("Josh Allen");
+  await user.click(drawerToggle());
+  await user.click(within(sidebar()).getByRole("button", { name: `Delete "${QB.title}"` }));
+
+  await user.keyboard("{Escape}");
+
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  expect(sidebar()).toBeInTheDocument();
+});
+
+it("narrowing the screen collapses the sidebar", async () => {
+  setup([QB]);
+  await screen.findByText("Josh Allen");
+
+  act(() => setScreenWidth(400));
+
+  expect(screen.queryByRole("navigation", { name: "Conversations" })).not.toBeInTheDocument();
+  expect(drawerToggle()).toBeInTheDocument();
 });

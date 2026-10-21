@@ -29,14 +29,14 @@ export function Sidebar({
   return (
     <nav
       aria-label="Conversations"
-      className="flex w-64 shrink-0 flex-col border-r border-stone-200 bg-white"
+      className="flex w-64 shrink-0 flex-col border-r border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900"
     >
       <div className="p-3">
         <button
           type="button"
           onClick={onNew}
           disabled={busy}
-          className="w-full rounded-md border border-stone-300 px-3 py-2 text-left text-sm font-medium hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-md border border-stone-300 dark:border-stone-700 px-3 py-2 text-left text-sm font-medium hover:bg-stone-100 dark:hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           New Conversation
         </button>
@@ -61,7 +61,7 @@ export function Sidebar({
             <li
               key={conversation.id}
               className={`group flex items-center rounded-md ${
-                isOpen ? "bg-emerald-50 text-emerald-900" : "text-stone-700 hover:bg-stone-100"
+                isOpen ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200" : "text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800"
               }`}
             >
               <button
@@ -133,7 +133,7 @@ function IconButton({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="rounded px-1.5 py-1 text-sm text-stone-500 hover:bg-stone-200 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
+      className="rounded px-1.5 py-1 text-sm text-stone-500 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
     >
       <span aria-hidden="true">{children}</span>
     </button>
@@ -175,7 +175,7 @@ function RenameForm({ title, onDone }: { title: string; onDone: (title: string |
         onFocus={(event) => event.currentTarget.select()}
         autoFocus
         maxLength={200}
-        className="w-full rounded-md border border-emerald-700 px-3 py-2 text-sm focus:outline-none"
+        className="w-full rounded-md border border-emerald-700 dark:border-emerald-500 px-3 py-2 text-sm focus:outline-none"
       />
     </form>
   );
@@ -192,7 +192,7 @@ function ConfirmDelete({
 }) {
   return (
     <div
-      className="fixed inset-0 z-10 flex items-center justify-center bg-stone-900/40 p-4"
+      className="fixed inset-0 z-10 flex items-center justify-center bg-stone-900/40 dark:bg-black/60 p-4"
       onClick={onCancel}
     >
       <div
@@ -202,14 +202,17 @@ function ConfirmDelete({
         aria-describedby="delete-description"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => {
-          if (event.key === "Escape") onCancel();
+          if (event.key === "Escape") {
+            event.preventDefault();
+            onCancel();
+          }
         }}
-        className="w-full max-w-sm rounded-lg bg-white p-5 shadow-lg"
+        className="w-full max-w-sm rounded-lg bg-white dark:bg-stone-900 p-5 shadow-lg"
       >
         <h2 id="delete-heading" className="font-semibold">
           Delete this conversation?
         </h2>
-        <p id="delete-description" className="mt-2 text-sm text-stone-600">
+        <p id="delete-description" className="mt-2 text-sm text-stone-600 dark:text-stone-400">
           "{title}" and all its questions and answers will be deleted permanently. This can't be
           undone.
         </p>
@@ -218,7 +221,7 @@ function ConfirmDelete({
             type="button"
             onClick={onCancel}
             autoFocus
-            className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium hover:bg-stone-100"
+            className="rounded-md border border-stone-300 dark:border-stone-700 px-3 py-2 text-sm font-medium hover:bg-stone-100 dark:hover:bg-stone-800"
           >
             Cancel
           </button>
