@@ -1,7 +1,7 @@
 import asyncio
 from types import SimpleNamespace
 
-from malamoneyball_agent import agent
+from malamoneyball_agent import terminal
 
 
 def run_chat(monkeypatch, *messages: str) -> list[list[str]]:
@@ -20,15 +20,15 @@ def run_chat(monkeypatch, *messages: str) -> list[list[str]]:
         asyncio.run(session.add_items([{"role": "user", "content": user_input}]))
         return SimpleNamespace(final_output="ok")
 
-    monkeypatch.setattr(agent.Runner, "run_sync", fake_run_sync)
-    agent.main()
+    monkeypatch.setattr(terminal.Runner, "run_sync", fake_run_sync)
+    terminal.main()
     return history_seen
 
 
 def test_chat_history_survives_a_restart(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setattr(agent, "load_dotenv", lambda: None)
+    monkeypatch.setattr(terminal, "load_dotenv", lambda: None)
 
     run_chat(monkeypatch, "Who should I start at QB?")
     history_seen = run_chat(monkeypatch, "What about at WR?")
@@ -39,7 +39,7 @@ def test_chat_history_survives_a_restart(monkeypatch, tmp_path):
 def test_exiting_the_chat_closes_the_history_database(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setattr(agent, "load_dotenv", lambda: None)
+    monkeypatch.setattr(terminal, "load_dotenv", lambda: None)
 
     run_chat(monkeypatch, "Who should I start at QB?")
 

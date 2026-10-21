@@ -1,6 +1,6 @@
 import pytest
 
-from malamoneyball_agent.agent import fetch_razzball_projections
+from malamoneyball_agent.assistant import fetch_razzball_projections
 
 PARAMETERS = fetch_razzball_projections.params_json_schema["properties"]
 

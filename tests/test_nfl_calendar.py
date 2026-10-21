@@ -2,8 +2,8 @@ from datetime import date
 
 import pytest
 
-from malamoneyball_agent import agent
-from malamoneyball_agent.agent import get_nfl_season, get_nfl_week
+from malamoneyball_agent import nfl_calendar
+from malamoneyball_agent.nfl_calendar import get_nfl_season, get_nfl_week
 
 # 2026: Labor Day is Mon Sep 7, kickoff is Thu Sep 10.
 
@@ -46,7 +46,7 @@ def test_get_nfl_season(day, season):
 
 @pytest.fixture
 def sunday_of_week_3(monkeypatch):
-    monkeypatch.setattr(agent, "_today", lambda: date(2026, 9, 27))
+    monkeypatch.setattr(nfl_calendar, "_today", lambda: date(2026, 9, 27))
 
 
 def test_tool_defaults_to_current_season_and_week(

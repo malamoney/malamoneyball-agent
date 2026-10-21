@@ -78,5 +78,11 @@ uv run ruff format     # format
 uv run mypy            # type-check
 ```
 
-The code lives in `src/malamoneyball_agent/`: `agent.py` has the tool, the
-agent and the chat loop, and `models.py` describes a Razzball projection row.
+The code lives in `src/malamoneyball_agent/`:
+
+- `assistant.py` builds the assistant: its projections tool, instructions and
+  model choice.
+- `terminal.py` is the chat loop you type into.
+- `razzball.py` downloads, caches and parses Razzball's projections, and
+  `models.py` describes one projection row.
+- `nfl_calendar.py` works out the current NFL season and week.
