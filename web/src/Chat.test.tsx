@@ -52,7 +52,7 @@ function setup(saved: SavedConversation[] = []) {
     })),
     deleteConversation: vi.fn(async (_id: string) => {}),
     startConversation: vi.fn(async (question: string) => ({ id: "new", title: question })),
-    ask: vi.fn((_id: string, _question: string) => answer.stream()),
+    ask: vi.fn((_id: string, _question: string, _signal?: AbortSignal) => answer.stream()),
   } satisfies AssistantApi;
   render(<Chat api={api} />);
   return { api, answer, user: userEvent.setup() };
@@ -136,7 +136,7 @@ it("starts an empty conversation that is titled by its first question", async ()
   await answer.finish();
 
   expect(api.startConversation).toHaveBeenCalledWith("Top 5 running backs?");
-  expect(api.ask).toHaveBeenCalledWith("new", "Top 5 running backs?");
+  expect(api.ask).toHaveBeenCalledWith("new", "Top 5 running backs?", expect.any(AbortSignal));
   expect(sidebarTitles()).toEqual(["Top 5 running backs?", QB.title, DEFENSE.title]);
   expect(openInSidebar()).toBe("Top 5 running backs?");
 });
@@ -150,7 +150,7 @@ it("moves a conversation to the top when asked in", async () => {
   await askQuestion(user, "And for week 8?");
   await answer.finish();
 
-  expect(api.ask).toHaveBeenCalledWith("def", "And for week 8?");
+  expect(api.ask).toHaveBeenCalledWith("def", "And for week 8?", expect.any(AbortSignal));
   expect(sidebarTitles()).toEqual([DEFENSE.title, QB.title]);
 });
 
@@ -199,11 +199,56 @@ it("blocks sending until the answer finishes", async () => {
   await answer.send(text("Start Josh Allen."));
 
   await askQuestion(user, "And at WR?");
-  expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+  expect(screen.queryByRole("button", { name: "Send" })).not.toBeInTheDocument();
   expect(api.ask).toHaveBeenCalledTimes(1);
 
   await answer.finish();
   expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
+  expect(screen.queryByRole("button", { name: "Stop" })).not.toBeInTheDocument();
+});
+
+const stoppedNote = /Stopped — this question and answer won't be saved/;
+
+it("stop ends the answer at once and marks it stopped", async () => {
+  const { api, answer, user } = setup();
+  await askQuestion(user, "Who should I start at QB?");
+  await answer.send(text("Start **Josh"));
+
+  await user.click(screen.getByRole("button", { name: "Stop" }));
+
+  const signal = api.ask.mock.calls[0][2]!;
+  expect(signal.aborted).toBe(true);
+  expect(screen.getByText(stoppedNote)).toBeInTheDocument();
+  expect(screen.getByText(/Start \*\*Josh/)).toBeInTheDocument();
+  expect(within(conversationLog()).queryByRole("listitem", { busy: true })).toBeNull();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+it("ignores what a stopped answer streams afterwards", async () => {
+  const { answer, user } = setup();
+  await askQuestion(user, "Who should I start at QB?");
+  await answer.send(lookupStarted);
+  await user.click(screen.getByRole("button", { name: "Stop" }));
+
+  await answer.send(lookupFinished, text("Start Josh Allen."));
+
+  expect(screen.queryByText("Start Josh Allen.")).not.toBeInTheDocument();
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(screen.getByText(stoppedNote)).toBeInTheDocument();
+});
+
+it("sending works again straight after stopping", async () => {
+  const { api, user } = setup([QB]);
+  await screen.findByText("Josh Allen");
+  await askQuestion(user, "And at WR?");
+  await user.click(screen.getByRole("button", { name: "Stop" }));
+
+  expect(screen.getByLabelText("Question")).toHaveFocus();
+  expect(within(sidebar()).getByRole("button", { name: "New Conversation" })).toBeEnabled();
+  await askQuestion(user, "And at TE?");
+
+  expect(api.ask).toHaveBeenLastCalledWith("qb", "And at TE?", expect.any(AbortSignal));
+  expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument();
 });
 
 it("starts a conversation for the first question", async () => {
@@ -212,7 +257,7 @@ it("starts a conversation for the first question", async () => {
   await answer.finish();
 
   expect(api.startConversation).toHaveBeenCalledWith("Who should I start at QB?");
-  expect(api.ask).toHaveBeenCalledWith("new", "Who should I start at QB?");
+  expect(api.ask).toHaveBeenCalledWith("new", "Who should I start at QB?", expect.any(AbortSignal));
 });
 
 it("asks in the conversation it opened", async () => {
@@ -223,7 +268,7 @@ it("asks in the conversation it opened", async () => {
   await answer.finish();
 
   expect(api.startConversation).not.toHaveBeenCalled();
-  expect(api.ask).toHaveBeenCalledWith("qb", "And at WR?");
+  expect(api.ask).toHaveBeenCalledWith("qb", "And at WR?", expect.any(AbortSignal));
 });
 
 it("shows an error when the answer fails", async () => {

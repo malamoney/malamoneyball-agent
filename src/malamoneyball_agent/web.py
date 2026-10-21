@@ -3,6 +3,7 @@
 import os
 import sys
 from collections.abc import AsyncIterator
+from contextlib import aclosing
 from functools import partial
 from pathlib import Path
 from typing import Annotated, Any
@@ -21,6 +22,7 @@ from malamoneyball_agent.conversations import (
     LOCAL_USER,
     Conversation,
     ConversationStore,
+    PendingHistory,
     make_title,
     open_default_store,
     read_history,
@@ -115,15 +117,24 @@ def create_app(
         conversation: Annotated[Conversation, Depends(own_conversation)],
         body: QuestionIn,
     ) -> AsyncIterator[ServerSentEvent]:
-        """Stream the Answer to a Question, then `done`, or `error` if it fails."""
+        """Stream the Answer to a Question, then `done`, or `error` if it fails.
+
+        Disconnecting before `done`, which is how the page stops an Answer,
+        stops the run and leaves the Question and Answer out of the history.
+        """
         store.touch(conversation.id)
         session = store.session(conversation.id)
+        history = PendingHistory(session)
         try:
-            async for event in answer(body.question, session):
-                yield ServerSentEvent(event=event.event, data=event.data)
+            async with aclosing(answer(body.question, history)) as events:
+                async for event in events:
+                    yield ServerSentEvent(event=event.event, data=event.data)
         except Exception as error:
+            await history.keep()  # only a Stopped Answer is left out, not a failed one
             yield ServerSentEvent(event="error", data={"message": str(error)})
             return
+        else:
+            await history.keep()
         finally:
             session.close()
         yield ServerSentEvent(event="done", data={})

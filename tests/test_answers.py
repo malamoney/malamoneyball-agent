@@ -116,7 +116,7 @@ def test_stream_answer_runs_the_assistant_with_the_session(monkeypatch):
 
     def fake_run_streamed(agent, question, session):
         calls.append((agent, question, session))
-        return SimpleNamespace(stream_events=stream_events)
+        return SimpleNamespace(stream_events=stream_events, is_complete=True)
 
     monkeypatch.setattr(answers.Runner, "run_streamed", fake_run_streamed)
     session = object()
@@ -126,6 +126,31 @@ def test_stream_answer_runs_the_assistant_with_the_session(monkeypatch):
 
     assert asyncio.run(collect()) == EXPECTED
     assert calls == [(ASSISTANT, "QB?", session)]
+
+
+def test_closing_the_stream_early_stops_the_run(monkeypatch):
+    run = SimpleNamespace(is_complete=False, cancelled=False)
+
+    async def stream_events():
+        yield text_delta("Start ")
+        await asyncio.Event().wait()
+
+    def cancel():
+        run.cancelled = True
+
+    run.stream_events, run.cancel = stream_events, cancel
+    monkeypatch.setattr(answers.Runner, "run_streamed", lambda *a, **k: run)
+
+    async def read_first_then_close():
+        events = stream_answer(ASSISTANT, "QB?", object())  # type: ignore[arg-type]
+        first = await anext(events)
+        await events.aclose()
+        return first
+
+    assert asyncio.run(read_first_then_close()) == AnswerEvent(
+        "text", {"text": "Start "}
+    )
+    assert run.cancelled
 
 
 def test_history_keeps_questions_and_answers_only():

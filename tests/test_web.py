@@ -1,6 +1,7 @@
+import asyncio
 import json
 import sqlite3
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import closing
 from typing import Any
 
@@ -18,7 +19,7 @@ PLAYERS = [{"name": "Josh Allen", "position": "QB", "ppr_points": 24.1}]
 def scripted_answer(*events: AnswerEvent, fail_with: Exception | None = None):
     """A fake Assistant: saves the Question and its text, streaming `events`."""
 
-    async def answer(question: str, session: Session) -> AsyncIterator[AnswerEvent]:
+    async def answer(question: str, session: Session) -> AsyncGenerator[AnswerEvent]:
         await session.add_items([{"role": "user", "content": question}])
         for event in events:
             yield event
@@ -33,6 +34,25 @@ def scripted_answer(*events: AnswerEvent, fail_with: Exception | None = None):
         await session.add_items([saved])
 
     return answer
+
+
+def unfinished_answer(*events: AnswerEvent):
+    """A fake Assistant that saves the Question, streams `events`, then waits.
+
+    Returns the fake and a list it records "stopped" in when the run is stopped.
+    """
+    stopped: list[str] = []
+
+    async def answer(question: str, session: Session) -> AsyncGenerator[AnswerEvent]:
+        await session.add_items([{"role": "user", "content": question}])
+        try:
+            for event in events:
+                yield event
+            await asyncio.Event().wait()
+        finally:
+            stopped.append("stopped")
+
+    return answer, stopped
 
 
 LOOKUP_ANSWER = scripted_answer(
@@ -88,6 +108,53 @@ def ask_in(
     return sse_events(response.text)
 
 
+def ask_then_disconnect(app, conversation_id: str, question: str) -> list[str]:
+    """Ask over raw ASGI, disconnecting once the first event arrives, as Stop does.
+
+    The test client waits for a whole response, so it can't disconnect midway.
+    Returns the response body's chunks.
+    """
+    path = f"/api/conversations/{conversation_id}/questions"
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0", "spec_version": "2.3"},  # what uvicorn reports
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "http",
+        "path": path,
+        "raw_path": path.encode(),
+        "query_string": b"",
+        "root_path": "",
+        "headers": [(b"content-type", b"application/json")],
+        "client": ("127.0.0.1", 50000),
+        "server": ("127.0.0.1", 8000),
+    }
+    body = json.dumps({"question": question}).encode()
+    chunks: list[str] = []
+
+    async def run() -> None:
+        first_event = asyncio.Event()
+        requested = False
+
+        async def receive() -> dict[str, Any]:
+            nonlocal requested
+            if not requested:
+                requested = True
+                return {"type": "http.request", "body": body, "more_body": False}
+            await first_event.wait()
+            return {"type": "http.disconnect"}
+
+        async def send(message: dict[str, Any]) -> None:
+            if message["type"] == "http.response.body" and message.get("body"):
+                chunks.append(message["body"].decode())
+                first_event.set()
+
+        await asyncio.wait_for(app(scope, receive, send), timeout=5)
+
+    asyncio.run(run())
+    return chunks
+
+
 def test_answer_streams_typed_events_in_order(store):
     events = ask(client_for(store), "Who should I start at QB?")
 
@@ -114,6 +181,58 @@ def test_failed_answer_ends_with_an_error_event(store):
     assert events == [
         ("text", {"text": "Start"}),
         ("error", {"message": "Razzball rejected the API key."}),
+    ]
+
+
+def test_disconnecting_stops_the_answer_and_keeps_none_of_it(store):
+    answer, stopped = unfinished_answer(AnswerEvent("text", {"text": "Start"}))
+    client = client_for(store, answer)
+    started = client.post("/api/conversations", json={"question": "QB?"}).json()
+
+    chunks = ask_then_disconnect(client.app, started["id"], "QB?")
+
+    assert sse_events("".join(chunks)) == [("text", {"text": "Start"})]
+    assert stopped == ["stopped"]
+    opened = client.get(f"/api/conversations/{started['id']}").json()
+    assert opened["messages"] == []
+
+
+def test_a_stopped_answer_leaves_earlier_ones_in_place(store):
+    client = client_for(store)
+    ask(client, "Who should I start at QB?")
+    conversation_id = client.get("/api/conversations").json()[0]["id"]
+    answer, _ = unfinished_answer(AnswerEvent("text", {"text": "Start"}))
+
+    ask_then_disconnect(client_for(store, answer).app, conversation_id, "And at WR?")
+
+    assert client.get(f"/api/conversations/{conversation_id}").json()["messages"] == [
+        {"role": "question", "text": "Who should I start at QB?"},
+        {"role": "answer", "text": "Start **Josh Allen**."},
+    ]
+
+
+def test_can_ask_again_after_stopping(store):
+    answer, _ = unfinished_answer(AnswerEvent("text", {"text": "Start"}))
+    started = client_for(store).post("/api/conversations", json={"question": "QB?"})
+    conversation_id = started.json()["id"]
+    ask_then_disconnect(client_for(store, answer).app, conversation_id, "QB?")
+
+    events = ask_in(client_for(store), conversation_id, "Who should I start at QB?")
+
+    assert events[-1] == ("done", {})
+    messages = client_for(store).get(f"/api/conversations/{conversation_id}").json()
+    assert [m["role"] for m in messages["messages"]] == ["question", "answer"]
+
+
+def test_a_failed_answer_keeps_its_question(store):
+    client = client_for(
+        store, scripted_answer(fail_with=RuntimeError("Razzball is down."))
+    )
+    ask(client, "Who should I start at QB?")
+    conversation_id = client.get("/api/conversations").json()[0]["id"]
+
+    assert client.get(f"/api/conversations/{conversation_id}").json()["messages"] == [
+        {"role": "question", "text": "Who should I start at QB?"}
     ]
 
 
