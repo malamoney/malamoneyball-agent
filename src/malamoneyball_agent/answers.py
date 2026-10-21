@@ -1,7 +1,7 @@
 """An Answer as a stream of events, so a page can show it while it's written."""
 
 import json
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -28,18 +28,24 @@ class AnswerEvent:
 
 
 # Streams the Answer to a Question, saving both to the Conversation's history.
-AnswerStream = Callable[[str, Session], AsyncIterator[AnswerEvent]]
+# Closing the stream early stops the Answer.
+AnswerStream = Callable[[str, Session], AsyncGenerator[AnswerEvent]]
 
 
 async def stream_answer(
     assistant: Agent, question: str, session: Session
-) -> AsyncIterator[AnswerEvent]:
+) -> AsyncGenerator[AnswerEvent]:
     """Answer a Question with the Assistant, yielding events as they happen."""
     result = Runner.run_streamed(assistant, question, session=session)
     tool_names: dict[str, str] = {}
-    async for event in result.stream_events():
-        for answer_event in to_answer_events(event, tool_names):
-            yield answer_event
+    try:
+        async for event in result.stream_events():
+            for answer_event in to_answer_events(event, tool_names):
+                yield answer_event
+    finally:
+        # Closed early when the Answer is stopped, so stop the run with it.
+        if not result.is_complete:
+            result.cancel()
 
 
 def to_answer_events(

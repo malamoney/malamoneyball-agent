@@ -8,10 +8,13 @@ import { Sidebar } from "./Sidebar";
 /** The Answer being written: its text so far, and how many lookups are running. */
 type Streaming = { text: string; lookupsRunning: number };
 
+/** A Question or Answer on the page; a Stopped Answer is shown but never saved. */
+type Shown = Message & { stopped?: boolean };
+
 export function Chat({ api }: { api: AssistantApi }) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Shown[]>([]);
   const [loading, setLoading] = useState(true);
   const [streaming, setStreaming] = useState<Streaming | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +23,8 @@ export function Chat({ api }: { api: AssistantApi }) {
   const questionBox = useRef<HTMLTextAreaElement>(null);
   // Counts openings, so a slow response for an earlier click is ignored.
   const latestOpening = useRef(0);
+  // Stops the Answer being written.
+  const stopper = useRef<AbortController | null>(null);
   const busy = streaming !== null;
   const openConversation = conversations.find((c) => c.id === openId) ?? null;
 
@@ -105,12 +110,18 @@ export function Chat({ api }: { api: AssistantApi }) {
     let text = "";
     let lookupsRunning = 0;
     setStreaming({ text, lookupsRunning });
+    const stop = new AbortController();
+    stopper.current = stop;
+    // Once stopped, `stopAnswer` has already updated the page, so this run
+    // changes nothing more.
     try {
       const asked = openConversation ?? (await api.startConversation(question));
       setOpenId(asked.id);
       // Asking makes a Conversation the most recently used.
       setConversations((current) => [asked, ...current.filter((c) => c.id !== asked.id)]);
-      for await (const event of api.ask(asked.id, question)) {
+      if (stop.signal.aborted) return;
+      for await (const event of api.ask(asked.id, question, stop.signal)) {
+        if (stop.signal.aborted) return;
         if (event.event === "done") break;
         if (event.event === "error") throw new Error(event.data.message);
         if (event.event === "text") text += event.data.text;
@@ -118,12 +129,21 @@ export function Chat({ api }: { api: AssistantApi }) {
         if (event.event === "tool_finished") lookupsRunning = Math.max(0, lookupsRunning - 1);
         setStreaming({ text, lookupsRunning });
       }
+      if (stop.signal.aborted) return;
       setMessages((current) => [...current, { role: "answer", text }]);
     } catch (failure) {
-      setError(errorText(failure));
+      if (!stop.signal.aborted) setError(errorText(failure));
     } finally {
-      setStreaming(null);
+      if (!stop.signal.aborted) setStreaming(null);
     }
+  }
+
+  function stopAnswer() {
+    stopper.current?.abort();
+    const text = streaming?.text ?? "";
+    setMessages((current) => [...current, { role: "answer", text, stopped: true }]);
+    setStreaming(null);
+    questionBox.current?.focus();
   }
 
   function submit(event: FormEvent) {
@@ -174,6 +194,8 @@ export function Chat({ api }: { api: AssistantApi }) {
             <li key={index}>
               {message.role === "question" ? (
                 <Question text={message.text} />
+              ) : message.stopped ? (
+                <StoppedAnswer text={message.text} />
               ) : (
                 <Answer text={message.text} />
               )}
@@ -213,13 +235,23 @@ export function Chat({ api }: { api: AssistantApi }) {
             placeholder="Ask about lineups or projections"
             className="max-h-40 min-h-10 flex-1 resize-none rounded-md border border-stone-300 bg-white px-3 py-2 focus:border-emerald-700 focus:outline-none"
           />
-          <button
-            type="submit"
-            disabled={busy || !draft.trim()}
-            className="h-10 rounded-md bg-emerald-800 px-4 font-medium text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:bg-stone-300"
-          >
-            Send
-          </button>
+          {busy ? (
+            <button
+              type="button"
+              onClick={stopAnswer}
+              className="h-10 rounded-md border border-stone-300 bg-white px-4 font-medium text-stone-800 hover:bg-stone-100"
+            >
+              Stop
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!draft.trim()}
+              className="h-10 rounded-md bg-emerald-800 px-4 font-medium text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:bg-stone-300"
+            >
+              Send
+            </button>
+          )}
         </div>
       </form>
       </div>
@@ -239,6 +271,17 @@ function Answer({ text }: { text: string }) {
   return (
     <div className="prose prose-stone max-w-none">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+    </div>
+  );
+}
+
+function StoppedAnswer({ text }: { text: string }) {
+  return (
+    <div>
+      {text && <Answer text={text} />}
+      <p className="mt-2 text-sm text-stone-500 italic">
+        Stopped — this question and answer won't be saved.
+      </p>
     </div>
   );
 }

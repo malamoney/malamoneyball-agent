@@ -27,7 +27,8 @@ export interface AssistantApi {
   /** Delete a Conversation and its history, permanently. */
   deleteConversation(conversationId: string): Promise<void>;
   startConversation(firstQuestion: string): Promise<ConversationSummary>;
-  ask(conversationId: string, question: string): AsyncIterable<AnswerEvent>;
+  /** Stream the Answer to a Question; aborting `signal` stops it, and it isn't saved. */
+  ask(conversationId: string, question: string, signal?: AbortSignal): AsyncIterable<AnswerEvent>;
 }
 
 export const httpApi: AssistantApi = {
@@ -52,8 +53,9 @@ export const httpApi: AssistantApi = {
     return json(await post("/api/conversations", { question: firstQuestion }));
   },
 
-  async *ask(conversationId, question) {
-    const response = await post(`${conversationUrl(conversationId)}/questions`, { question });
+  async *ask(conversationId, question, signal) {
+    const url = `${conversationUrl(conversationId)}/questions`;
+    const response = await post(url, { question }, signal);
     if (!response.ok || !response.body) throw await failure(response);
     for await (const { event, data } of readServerSentEvents(response.body)) {
       yield { event, data: JSON.parse(data) } as AnswerEvent;
@@ -65,15 +67,16 @@ function conversationUrl(conversationId: string): string {
   return `/api/conversations/${encodeURIComponent(conversationId)}`;
 }
 
-function post(url: string, body: unknown): Promise<Response> {
-  return send("POST", url, body);
+function post(url: string, body: unknown, signal?: AbortSignal): Promise<Response> {
+  return send("POST", url, body, signal);
 }
 
-function send(method: string, url: string, body: unknown): Promise<Response> {
+function send(method: string, url: string, body: unknown, signal?: AbortSignal): Promise<Response> {
   return fetch(url, {
     method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
 }
 

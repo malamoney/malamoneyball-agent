@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from agents import SQLiteSession
+from agents import Session, SQLiteSession
 from platformdirs import user_data_dir
 
 # There are no logins yet, so every Conversation belongs to this one User.
@@ -83,6 +83,40 @@ def _text(content: Any) -> str:
             and part.get("type") in ("input_text", "output_text")
         )
     return ""
+
+
+class PendingHistory:
+    """A Conversation's history as an Answer is written, keeping its additions apart.
+
+    The Question and Answer are only saved by `keep`, so a Stopped Answer,
+    which is never kept, leaves the history as it was.
+    """
+
+    def __init__(self, saved: Session) -> None:
+        self.session_id = saved.session_id
+        self.session_settings = saved.session_settings
+        self._saved = saved
+        self._added: list[Any] = []
+
+    async def get_items(self, limit: int | None = None) -> list[Any]:
+        items = [*await self._saved.get_items(), *self._added]
+        return items if limit is None else items[max(len(items) - limit, 0) :]
+
+    async def add_items(self, items: list[Any]) -> None:
+        self._added.extend(items)
+
+    async def pop_item(self) -> Any:
+        return self._added.pop() if self._added else await self._saved.pop_item()
+
+    async def clear_session(self) -> None:
+        self._added.clear()
+        await self._saved.clear_session()
+
+    async def keep(self) -> None:
+        """Save what was added to the Conversation's history."""
+        if self._added:
+            await self._saved.add_items(self._added)
+            self._added = []
 
 
 @dataclass(frozen=True)
