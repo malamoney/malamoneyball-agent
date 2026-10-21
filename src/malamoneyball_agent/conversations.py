@@ -88,8 +88,8 @@ def _text(content: Any) -> str:
 class PendingHistory:
     """A Conversation's history as an Answer is written, keeping its additions apart.
 
-    The Question and Answer are only saved by `keep`, so a Stopped Answer,
-    which is never kept, leaves the history as it was.
+    The Question and Answer are only saved by `keep`, so a Stopped or failed
+    Answer, which is never kept, leaves the history as it was.
     """
 
     def __init__(self, saved: Session) -> None:

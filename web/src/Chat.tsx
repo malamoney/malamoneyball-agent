@@ -8,8 +8,11 @@ import { Sidebar } from "./Sidebar";
 /** The Answer being written: its text so far, and how many lookups are running. */
 type Streaming = { text: string; lookupsRunning: number };
 
-/** A Question or Answer on the page; a Stopped Answer is shown but never saved. */
-type Shown = Message & { stopped?: boolean };
+/**
+ * A Question or Answer on the page. Stopped and failed Answers are shown but
+ * never saved; a failed one shows why in place of its text.
+ */
+type Shown = Message & { stopped?: boolean; failed?: string };
 
 export function Chat({ api }: { api: AssistantApi }) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -103,10 +106,15 @@ export function Chat({ api }: { api: AssistantApi }) {
     end.current?.scrollIntoView?.({ block: "end" });
   }, [messages, streaming, error]);
 
-  async function ask(question: string) {
-    setDraft("");
+  /** Ask a Question, or, retrying, ask the last one again in place of its failed Answer. */
+  async function ask(question: string, retrying = false) {
     setError(null);
-    setMessages((current) => [...current, { role: "question", text: question }]);
+    if (retrying) {
+      setMessages((current) => current.slice(0, -1));
+    } else {
+      setDraft("");
+      setMessages((current) => [...current, { role: "question", text: question }]);
+    }
     let text = "";
     let lookupsRunning = 0;
     setStreaming({ text, lookupsRunning });
@@ -132,7 +140,9 @@ export function Chat({ api }: { api: AssistantApi }) {
       if (stop.signal.aborted) return;
       setMessages((current) => [...current, { role: "answer", text }]);
     } catch (failure) {
-      if (!stop.signal.aborted) setError(errorText(failure));
+      if (stop.signal.aborted) return;
+      const failed = errorText(failure);
+      setMessages((current) => [...current, { role: "answer", text: "", failed }]);
     } finally {
       if (!stop.signal.aborted) setStreaming(null);
     }
@@ -194,6 +204,16 @@ export function Chat({ api }: { api: AssistantApi }) {
             <li key={index}>
               {message.role === "question" ? (
                 <Question text={message.text} />
+              ) : message.failed !== undefined ? (
+                <FailedAnswer
+                  reason={message.failed}
+                  // Only the latest can be retried, so its Answer lands where it failed.
+                  onRetry={
+                    index === messages.length - 1
+                      ? () => void ask(messages[index - 1].text, true)
+                      : undefined
+                  }
+                />
               ) : message.stopped ? (
                 <StoppedAnswer text={message.text} />
               ) : (
@@ -282,6 +302,26 @@ function StoppedAnswer({ text }: { text: string }) {
       <p className="mt-2 text-sm text-stone-500 italic">
         Stopped — this question and answer won't be saved.
       </p>
+    </div>
+  );
+}
+
+function FailedAnswer({ reason, onRetry }: { reason: string; onRetry?: () => void }) {
+  return (
+    <div
+      role="alert"
+      className="flex items-center gap-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800"
+    >
+      <p className="flex-1">{reason}</p>
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="shrink-0 rounded-md border border-red-300 bg-white px-3 py-1 font-medium text-red-800 hover:bg-red-100"
+        >
+          Retry
+        </button>
+      )}
     </div>
   );
 }

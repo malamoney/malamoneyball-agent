@@ -1,7 +1,10 @@
 import asyncio
 from types import SimpleNamespace
 
-from agents import Agent
+import httpx2
+import openai
+import pytest
+from agents import Agent, MaxTurnsExceeded
 from agents.items import MessageOutputItem, ToolCallItem, ToolCallOutputItem
 from agents.stream_events import (
     AgentUpdatedStreamEvent,
@@ -189,3 +192,44 @@ def test_history_joins_an_answer_saved_in_parts():
         "role": "answer",
         "text": "Let me check.\n\nStart Josh Allen.",
     }
+
+
+REQUEST = httpx2.Request("POST", "https://api.openai.com/v1/responses")
+
+
+def status_error(kind: type[openai.APIStatusError], status: int) -> Exception:
+    response = httpx2.Response(status, request=REQUEST)
+    return kind(f"Error code: {status} - {{...}}", response=response, body=None)
+
+
+@pytest.mark.parametrize(
+    ("error", "message"),
+    [
+        (
+            status_error(openai.AuthenticationError, 401),
+            "OpenAI rejected the API key. Check OPENAI_API_KEY in the .env file.",
+        ),
+        (
+            status_error(openai.NotFoundError, 404),
+            "OpenAI has no model by that name. Check OPENAI_MODEL in the .env file.",
+        ),
+        (
+            status_error(openai.RateLimitError, 429),
+            "OpenAI is busy, or the account is out of credit. Try again shortly.",
+        ),
+        (
+            openai.APITimeoutError(request=REQUEST),
+            "Couldn't reach OpenAI. Check the internet connection and try again.",
+        ),
+        (
+            MaxTurnsExceeded("Max turns (10) exceeded"),
+            "The Assistant took too many steps without finishing. Try again.",
+        ),
+        (
+            KeyError("tool_call_id"),
+            "Something went wrong answering this question. Try again.",
+        ),
+    ],
+)
+def test_failure_message_says_what_went_wrong_in_a_sentence(error, message):
+    assert answers.failure_message(error) == message
