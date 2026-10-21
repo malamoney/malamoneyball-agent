@@ -8,15 +8,18 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
+    "fastapi>=0.158.0",
     "openai-agents>=0.22.3",
     "platformdirs>=4.13.5",
     "pydantic>=2.13.5",
     "python-dotenv>=1.2.3",
     "requests>=2.34.2",
+    "uvicorn>=0.54.0",
 ]
 
 [project.scripts]
 malamoneyball-agent = "malamoneyball_agent.terminal:main"
+malamoneyball-web = "malamoneyball_agent.web:main"
 
 [build-system]
 requires = ["uv_build>=0.12.19,<0.13.0"]

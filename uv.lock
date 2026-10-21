@@ -7,6 +7,15 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "annotated-doc"
+version = "0.0.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/8e/38aa427ed5402449e226975b649c5dc73ccadfefeb95e6aecb8f8ea4b6b6/annotated_doc-0.0.5.tar.gz", hash = "sha256:c7e58ce09192557605d8bbd92836d7e1d520ac9580096042c0bfd197efacf1bb", size = 10758, upload-time = "2026-07-28T13:50:58.129Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3e/30/e900b21425a860e195f32e37657aa1f7c7f2b1bfb26f03ca209b90933c06/annotated_doc-0.0.5-py3-none-any.whl", hash = "sha256:117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101", size = 5302, upload-time = "2026-07-28T13:50:57.239Z" },
+]
+
+[[package]]
 name = "annotated-types"
 version = "0.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -332,6 +341,23 @@ wheels = [
 ]
 
 [[package]]
+name = "fastapi"
+version = "0.158.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "annotated-doc" },
+    { name = "opentelemetry-api" },
+    { name = "pydantic" },
+    { name = "starlette" },
+    { name = "typing-extensions" },
+    { name = "typing-inspection" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7c/47/702f3164e1453923434fb997fa5368a7f8e6a443e149d5c0e5148f279623/fastapi-0.158.0.tar.gz", hash = "sha256:890440689039bdadb06131bafae81eb63468a0dd9f6185fcec47afb69424ea6a", size = 509671, upload-time = "2026-10-21T17:02:14.798Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ea/df/f273d102d6ee50c5de3e56023a3e69bad30c209f8002e8d2efeecbeb114c/fastapi-0.158.0-py3-none-any.whl", hash = "sha256:c5127864026eca80a419047caba7760d561160904445fd825a60b6285b86ed0b", size = 148533, upload-time = "2026-10-21T17:02:12.881Z" },
+]
+
+[[package]]
 name = "griffelib"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -570,11 +596,13 @@ name = "malamoneyball-agent"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "fastapi" },
     { name = "openai-agents" },
     { name = "platformdirs" },
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "requests" },
+    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -587,11 +615,13 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "fastapi", specifier = ">=0.158.0" },
     { name = "openai-agents", specifier = ">=0.22.3" },
     { name = "platformdirs", specifier = ">=4.13.5" },
     { name = "pydantic", specifier = ">=2.13.5" },
     { name = "python-dotenv", specifier = ">=1.2.3" },
     { name = "requests", specifier = ">=2.34.2" },
+    { name = "uvicorn", specifier = ">=0.54.0" },
 ]
 
 [package.metadata.requires-dev]

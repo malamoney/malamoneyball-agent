@@ -88,8 +88,8 @@ def fetch_razzball_projections(
 # -------- the agent: system prompt + tools, the SDK runs the loop --------
 
 INSTRUCTIONS = """\
-You are a fantasy football assistant running in the user's terminal. You help
-with lineup decisions using Razzball's weekly NFL projections.
+You are a fantasy football assistant, used from a terminal or a web page. You
+help with lineup decisions using Razzball's weekly NFL projections.
 
 - Use the projections tool for any question about projected points. Never
   guess numbers.
