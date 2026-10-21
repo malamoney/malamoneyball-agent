@@ -5,6 +5,8 @@ from collections.abc import AsyncGenerator
 from contextlib import closing
 from typing import Any
 
+import httpx2
+import openai
 import pytest
 from agents import Session
 from fastapi.testclient import TestClient
@@ -34,6 +36,19 @@ def scripted_answer(*events: AnswerEvent, fail_with: Exception | None = None):
         await session.add_items([saved])
 
     return answer
+
+
+def openai_error(kind: type[openai.APIStatusError], status: int) -> Exception:
+    """An error as the OpenAI client raises it, raw body and request id included."""
+    request = httpx2.Request("POST", "https://api.openai.com/v1/responses")
+    response = httpx2.Response(
+        status, request=request, headers={"x-request-id": "req_123"}
+    )
+    return kind(
+        f"Error code: {status} - {{'error': {{'message': 'Incorrect key sk-abc'}}}}",
+        response=response,
+        body={"error": {"message": "Incorrect key sk-abc"}},
+    )
 
 
 def unfinished_answer(*events: AnswerEvent):
@@ -172,7 +187,7 @@ def test_failed_answer_ends_with_an_error_event(store):
         store,
         scripted_answer(
             AnswerEvent("text", {"text": "Start"}),
-            fail_with=RuntimeError("Razzball rejected the API key."),
+            fail_with=openai_error(openai.AuthenticationError, 401),
         ),
     )
 
@@ -180,8 +195,31 @@ def test_failed_answer_ends_with_an_error_event(store):
 
     assert events == [
         ("text", {"text": "Start"}),
-        ("error", {"message": "Razzball rejected the API key."}),
+        (
+            "error",
+            {
+                "message": "OpenAI rejected the API key. "
+                "Check OPENAI_API_KEY in the .env file."
+            },
+        ),
     ]
+
+
+def test_an_error_event_carries_no_internals(store):
+    client = client_for(
+        store,
+        scripted_answer(fail_with=openai_error(openai.InternalServerError, 500)),
+    )
+
+    events = ask(client, "Who should I start at QB?")
+
+    assert events == [
+        (
+            "error",
+            {"message": "Something went wrong answering this question. Try again."},
+        )
+    ]
+    assert "req_123" not in json.dumps(events)
 
 
 def test_disconnecting_stops_the_answer_and_keeps_none_of_it(store):
@@ -224,15 +262,25 @@ def test_can_ask_again_after_stopping(store):
     assert [m["role"] for m in messages["messages"]] == ["question", "answer"]
 
 
-def test_a_failed_answer_keeps_its_question(store):
-    client = client_for(
-        store, scripted_answer(fail_with=RuntimeError("Razzball is down."))
-    )
+def test_a_failed_answer_keeps_none_of_it(store):
+    client = client_for(store, scripted_answer(fail_with=RuntimeError("down")))
     ask(client, "Who should I start at QB?")
     conversation_id = client.get("/api/conversations").json()[0]["id"]
 
-    assert client.get(f"/api/conversations/{conversation_id}").json()["messages"] == [
-        {"role": "question", "text": "Who should I start at QB?"}
+    assert client.get(f"/api/conversations/{conversation_id}").json()["messages"] == []
+
+
+def test_retrying_a_failed_answer_saves_the_question_once(store):
+    failing = client_for(store, scripted_answer(fail_with=RuntimeError("down")))
+    ask(failing, "Who should I start at QB?")
+    conversation_id = failing.get("/api/conversations").json()[0]["id"]
+
+    events = ask_in(client_for(store), conversation_id, "Who should I start at QB?")
+
+    assert events[-1] == ("done", {})
+    assert failing.get(f"/api/conversations/{conversation_id}").json()["messages"] == [
+        {"role": "question", "text": "Who should I start at QB?"},
+        {"role": "answer", "text": "Start **Josh Allen**."},
     ]
 
 

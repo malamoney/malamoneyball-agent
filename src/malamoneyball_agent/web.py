@@ -16,7 +16,7 @@ from fastapi.sse import EventSourceResponse, ServerSentEvent
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from malamoneyball_agent.answers import AnswerStream, stream_answer
+from malamoneyball_agent.answers import AnswerStream, failure_message, stream_answer
 from malamoneyball_agent.assistant import build_agent
 from malamoneyball_agent.conversations import (
     LOCAL_USER,
@@ -119,8 +119,9 @@ def create_app(
     ) -> AsyncIterator[ServerSentEvent]:
         """Stream the Answer to a Question, then `done`, or `error` if it fails.
 
-        Disconnecting before `done`, which is how the page stops an Answer,
-        stops the run and leaves the Question and Answer out of the history.
+        Only a finished Answer is saved. Disconnecting before `done`, which is
+        how the page stops an Answer, stops the run; a failed Answer is left
+        out too, so retrying it doesn't ask the same Question twice.
         """
         store.touch(conversation.id)
         session = store.session(conversation.id)
@@ -130,8 +131,8 @@ def create_app(
                 async for event in events:
                     yield ServerSentEvent(event=event.event, data=event.data)
         except Exception as error:
-            await history.keep()  # only a Stopped Answer is left out, not a failed one
-            yield ServerSentEvent(event="error", data={"message": str(error)})
+            message = failure_message(error)
+            yield ServerSentEvent(event="error", data={"message": message})
             return
         else:
             await history.keep()

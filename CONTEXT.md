@@ -28,6 +28,10 @@ _Avoid_: Message, response, completion
 An Answer the User cut off before it finished. It is not kept in the Conversation's history.
 _Avoid_: Cancelled answer, partial answer
 
+**Failed Answer**:
+An Answer that couldn't be finished because something went wrong, such as OpenAI rejecting the API key. The page shows a short reason and lets the User retry. Like a Stopped Answer, it is not kept in the Conversation's history.
+_Avoid_: Error, crashed answer
+
 **Manager**:
 The person who runs a fantasy football team, in the fantasy-league sense. Not a User of this app, even when the same person is both.
 _Avoid_: Owner (for this meaning), user

@@ -1,11 +1,13 @@
 """An Answer as a stream of events, so a page can show it while it's written."""
 
 import json
+import logging
 from collections.abc import AsyncGenerator, Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from agents import Agent, Runner, Session
+import openai
+from agents import Agent, MaxTurnsExceeded, Runner, Session
 from agents.items import ToolCallItem, ToolCallOutputItem
 from agents.stream_events import (
     RawResponsesStreamEvent,
@@ -26,6 +28,8 @@ class AnswerEvent:
     event: Literal["text", "tool_started", "tool_finished"]
     data: dict[str, Any] = field(default_factory=dict)
 
+
+logger = logging.getLogger(__name__)
 
 # Streams the Answer to a Question, saving both to the Conversation's history.
 # Closing the stream early stops the Answer.
@@ -99,3 +103,23 @@ def _arguments(raw: Any) -> Any:
         return json.loads(raw) if isinstance(raw, str) else raw
     except ValueError:
         return raw
+
+
+def failure_message(error: Exception) -> str:
+    """Say in a sentence why an Answer failed, without its internals.
+
+    The full error is logged for whoever runs the server; the page only gets
+    this, since OpenAI's errors carry request ids and raw response bodies.
+    """
+    logger.error("An Answer failed", exc_info=error)
+    if isinstance(error, (openai.AuthenticationError, openai.PermissionDeniedError)):
+        return "OpenAI rejected the API key. Check OPENAI_API_KEY in the .env file."
+    if isinstance(error, openai.NotFoundError):
+        return "OpenAI has no model by that name. Check OPENAI_MODEL in the .env file."
+    if isinstance(error, openai.RateLimitError):
+        return "OpenAI is busy, or the account is out of credit. Try again shortly."
+    if isinstance(error, openai.APIConnectionError):
+        return "Couldn't reach OpenAI. Check the internet connection and try again."
+    if isinstance(error, MaxTurnsExceeded):
+        return "The Assistant took too many steps without finishing. Try again."
+    return "Something went wrong answering this question. Try again."

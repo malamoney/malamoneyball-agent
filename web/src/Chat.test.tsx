@@ -271,15 +271,66 @@ it("asks in the conversation it opened", async () => {
   expect(api.ask).toHaveBeenCalledWith("qb", "And at WR?", expect.any(AbortSignal));
 });
 
-it("shows an error when the answer fails", async () => {
+const failed: AnswerEvent = { event: "error", data: { message: "Couldn't reach OpenAI." } };
+
+it("shows a failed answer inline, after its question, with retry", async () => {
   const { answer, user } = setup();
   await askQuestion(user, "Who should I start at QB?");
 
-  await answer.send({ event: "error", data: { message: "Razzball is down." } });
+  await answer.send(text("Start"), failed);
 
-  expect(await screen.findByRole("alert")).toHaveTextContent("Razzball is down.");
-  expect(within(conversationLog()).getByText("Who should I start at QB?")).toBeInTheDocument();
+  const items = within(conversationLog()).getAllByRole("listitem");
+  expect(items).toHaveLength(2);
+  expect(items[0]).toHaveTextContent("Who should I start at QB?");
+  const alert = within(items[1]).getByRole("alert");
+  expect(alert).toHaveTextContent("Couldn't reach OpenAI.");
+  expect(within(alert).getByRole("button", { name: "Retry" })).toBeEnabled();
+  expect(screen.queryByText("Start")).not.toBeInTheDocument();
   expect(screen.getByLabelText("Question")).toHaveValue("");
+});
+
+it("retry asks the same question again and its answer replaces the error", async () => {
+  const { api, answer, user } = setup([QB]);
+  await screen.findByText("Josh Allen");
+  await askQuestion(user, "And at WR?");
+  await answer.send(failed);
+
+  await user.click(screen.getByRole("button", { name: "Retry" }));
+
+  expect(api.ask).toHaveBeenCalledTimes(2);
+  expect(api.ask).toHaveBeenLastCalledWith("qb", "And at WR?", expect.any(AbortSignal));
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  await answer.send(text("Start Ja'Marr Chase."));
+  await answer.finish();
+  expect(within(conversationLog()).getAllByText("And at WR?")).toHaveLength(1);
+  expect(screen.getByText("Start Ja'Marr Chase.")).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+it("a retry that fails again shows the new error", async () => {
+  const { answer, user } = setup();
+  await askQuestion(user, "Who should I start at QB?");
+  await answer.send(failed);
+
+  await user.click(screen.getByRole("button", { name: "Retry" }));
+  await answer.send({ event: "error", data: { message: "OpenAI is busy." } });
+
+  expect(screen.getAllByRole("alert")).toHaveLength(1);
+  expect(screen.getByRole("alert")).toHaveTextContent("OpenAI is busy.");
+  expect(within(conversationLog()).getAllByText("Who should I start at QB?")).toHaveLength(1);
+});
+
+it("asking something else after a failure keeps the error but not its retry", async () => {
+  const { api, answer, user } = setup();
+  await askQuestion(user, "Who should I start at QB?");
+  await answer.send(failed);
+
+  await askQuestion(user, "And at WR?");
+
+  expect(api.ask).toHaveBeenLastCalledWith("new", "And at WR?", expect.any(AbortSignal));
+  expect(screen.getByRole("alert")).toHaveTextContent("Couldn't reach OpenAI.");
+  await answer.finish();
+  expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
 });
 
 it("renames a conversation from the sidebar", async () => {
