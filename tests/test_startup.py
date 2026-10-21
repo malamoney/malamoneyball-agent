@@ -31,6 +31,6 @@ def test_main_exits_with_clear_message_without_openai_key(monkeypatch):
     monkeypatch.setattr("builtins.input", lambda _: pytest.fail("prompted for input"))
 
     with pytest.raises(SystemExit) as exc_info:
-        terminal.main()
+        terminal.main([])
 
     assert "OPENAI_API_KEY is not set" in str(exc_info.value.code)
