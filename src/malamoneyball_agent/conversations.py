@@ -42,6 +42,46 @@ def make_title(question: str) -> str:
     return shortened.rstrip(" ,.;:?!") + "…"
 
 
+def open_default_store() -> ConversationStore:
+    """Open the store in the data folder, importing any old terminal history."""
+    # The old history lived in the directory the agent was started from.
+    return ConversationStore.open(data_dir(), Path(LEGACY_DB_NAME))
+
+
+def read_history(items: list[Any]) -> list[dict[str, str]]:
+    """Return the Questions and Answers in a Conversation's saved history.
+
+    Each is {"role": "question" or "answer", "text": ...}, in order. Tool calls
+    and their outputs are left out, and an Answer saved in several parts
+    (before and after a tool call) is joined into one.
+    """
+    messages: list[dict[str, str]] = []
+    for item in items:
+        role = {"user": "question", "assistant": "answer"}.get(item.get("role"))
+        text = _text(item.get("content"))
+        if role is None or not text:
+            continue
+        if role == "answer" and messages and messages[-1]["role"] == "answer":
+            messages[-1]["text"] += "\n\n" + text
+        else:
+            messages.append({"role": role, "text": text})
+    return messages
+
+
+def _text(content: Any) -> str:
+    # Questions are saved as plain strings, Answers as lists of text parts.
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(
+            part.get("text", "")
+            for part in content
+            if isinstance(part, dict)
+            and part.get("type") in ("input_text", "output_text")
+        )
+    return ""
+
+
 @dataclass(frozen=True)
 class Conversation:
     id: str
@@ -111,15 +151,13 @@ class ConversationStore:
             " ORDER BY last_used_at DESC, rowid DESC",
             (user_id,),
         )
-        return [
-            Conversation(
-                id=row["id"],
-                user_id=row["user_id"],
-                title=row["title"],
-                last_used_at=datetime.fromisoformat(row["last_used_at"]),
-            )
-            for row in rows
-        ]
+        return [_conversation(row) for row in rows]
+
+    def get(self, conversation_id: str) -> Conversation | None:
+        rows = self._execute(
+            "SELECT * FROM conversations WHERE id = ?", (conversation_id,)
+        )
+        return _conversation(rows[0]) if rows else None
 
     def most_recent(self, user_id: str) -> Conversation | None:
         conversations = self.recent(user_id)
@@ -161,3 +199,12 @@ class ConversationStore:
         with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.row_factory = sqlite3.Row
             return conn.execute(sql, params).fetchall()
+
+
+def _conversation(row: sqlite3.Row) -> Conversation:
+    return Conversation(
+        id=row["id"],
+        user_id=row["user_id"],
+        title=row["title"],
+        last_used_at=datetime.fromisoformat(row["last_used_at"]),
+    )

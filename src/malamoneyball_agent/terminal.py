@@ -3,18 +3,16 @@
 import argparse
 import os
 import sys
-from pathlib import Path
 
 from agents import Runner, SQLiteSession
 from dotenv import load_dotenv
 
 from malamoneyball_agent.assistant import build_agent
 from malamoneyball_agent.conversations import (
-    LEGACY_DB_NAME,
     LOCAL_USER,
     ConversationStore,
-    data_dir,
     make_title,
+    open_default_store,
 )
 
 
@@ -34,11 +32,6 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _open_store() -> ConversationStore:
-    # The old history lived in the directory the agent was started from.
-    return ConversationStore.open(data_dir(), Path(LEGACY_DB_NAME))
-
-
 def _print_conversations(store: ConversationStore) -> None:
     conversations = store.recent(LOCAL_USER)
     if not conversations:
@@ -52,7 +45,7 @@ def main(argv: list[str] | None = None) -> None:
     load_dotenv()  # reads API keys from the .env file in the project root
     args = _parse_args(argv)
     if args.list:
-        _print_conversations(_open_store())
+        _print_conversations(open_default_store())
         return
     if not os.getenv("OPENAI_API_KEY"):
         sys.exit(
@@ -60,7 +53,7 @@ def main(argv: list[str] | None = None) -> None:
         )
 
     assistant = build_agent()  # after load_dotenv, so .env can set OPENAI_MODEL
-    store = _open_store()
+    store = open_default_store()
     # A new Conversation is only saved once its first Question is asked.
     conversation = None if args.new else store.most_recent(LOCAL_USER)
     session: SQLiteSession | None = None

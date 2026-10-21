@@ -1,7 +1,7 @@
 # malamoneyball-agent
 
-A fantasy football assistant that runs in your terminal. Ask it lineup
-questions in plain English and it answers from
+A fantasy football assistant that runs in your terminal or a web page on your
+own machine. Ask it lineup questions in plain English and it answers from
 [Razzball](https://razzball.com)'s weekly NFL projections:
 
 ```
@@ -20,6 +20,7 @@ the model decides when to look up projections, and a Python tool fetches them.
   dependencies for you
 - An OpenAI API key
 - A Razzball API key (from your Razzball subscription)
+- For the web page: [Node.js](https://nodejs.org) 24 or later, to build it
 
 ## Setup
 
@@ -85,6 +86,28 @@ Good to know:
 - **Speed:** each week's projections are downloaded once and reused for five
   minutes.
 
+## The web page
+
+The web page shows the same conversations as the terminal. Build it once
+(and again after pulling changes to `web/`):
+
+```sh
+cd web
+npm install && npm run build
+cd ..
+```
+
+Then start the server and open http://localhost:8000:
+
+```sh
+uv run malamoneyball-web
+```
+
+The page opens your most recent conversation. Answers stream in as they're
+written, and "Looking up…" shows while projections are fetched. The server
+only listens on this machine (127.0.0.1), so nobody else on your network can
+reach it.
+
 ## Development
 
 ```sh
@@ -94,12 +117,36 @@ uv run ruff format     # format
 uv run mypy            # type-check
 ```
 
+For the web page:
+
+```sh
+cd web
+npm test               # component tests
+npm run typecheck      # type-check
+```
+
+To work on the page with live reload, run the Python server and Vite's dev
+server side by side, then open the address Vite prints (usually
+http://localhost:5173). Vite forwards `/api` calls to the Python server.
+
+```sh
+uv run malamoneyball-web     # terminal 1
+cd web && npm run dev        # terminal 2
+```
+
 The code lives in `src/malamoneyball_agent/`:
 
 - `assistant.py` builds the assistant: its projections tool, instructions and
   model choice.
 - `terminal.py` is the chat loop you type into.
+- `web.py` is the web server: the API and the built page.
+- `answers.py` turns the assistant's work into a stream of events for the
+  page: text, lookups starting and finishing.
 - `conversations.py` saves conversations and their histories.
 - `razzball.py` downloads, caches and parses Razzball's projections, and
   `models.py` describes one projection row.
 - `nfl_calendar.py` works out the current NFL season and week.
+
+The web page lives in `web/` (React, TypeScript and Tailwind, built with
+Vite); `web/src/Chat.tsx` is the page and `web/src/api.ts` talks to the
+server.

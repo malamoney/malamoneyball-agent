@@ -24,5 +24,9 @@ coverage.xml
 .vscode/
 .idea/
 
+# Web page dependencies and build output
+node_modules/
+web/dist/
+
 # Local chat history
 sessions.db*
