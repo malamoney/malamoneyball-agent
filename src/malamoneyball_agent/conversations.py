@@ -18,6 +18,9 @@ LOCAL_USER = "local"
 # Overrides the per-user folder Conversations are kept in.
 DATA_DIR_SETTING = "MALAMONEYBALL_DATA_DIR"
 DB_NAME = "conversations.db"
+# The SDK's tables for each Conversation's history, in the same file.
+SESSIONS_TABLE = "agent_sessions"
+MESSAGES_TABLE = "agent_messages"
 # Before Conversations, the terminal kept one history in this file, in the
 # directory the agent was started from, under this session id.
 LEGACY_DB_NAME = "sessions.db"
@@ -168,7 +171,30 @@ class ConversationStore:
 
         The caller closes it.
         """
-        return SQLiteSession(conversation_id, self.db_path)
+        return SQLiteSession(
+            conversation_id, self.db_path, SESSIONS_TABLE, MESSAGES_TABLE
+        )
+
+    def rename(self, conversation_id: str, title: str) -> None:
+        self._execute(
+            "UPDATE conversations SET title = ? WHERE id = ?", (title, conversation_id)
+        )
+
+    def delete(self, conversation_id: str) -> None:
+        """Delete a Conversation and its history, permanently."""
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
+            # The history tables only exist once some Question has been asked.
+            history_tables = {
+                row[0]
+                for row in conn.execute("SELECT name FROM sqlite_master")
+                if row[0] in (SESSIONS_TABLE, MESSAGES_TABLE)
+            }
+            for table in (MESSAGES_TABLE, SESSIONS_TABLE):
+                if table in history_tables:
+                    conn.execute(
+                        f"DELETE FROM {table} WHERE session_id = ?", (conversation_id,)
+                    )
+            conn.execute("DELETE FROM conversations WHERE id = ?", (conversation_id,))
 
     def _import_legacy(self, legacy_db: Path) -> None:
         """Import the pre-Conversation history as one Conversation, once per file."""

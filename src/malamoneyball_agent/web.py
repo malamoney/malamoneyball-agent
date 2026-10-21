@@ -43,6 +43,10 @@ class QuestionIn(BaseModel):
     question: str = Field(min_length=1)
 
 
+class RenameIn(BaseModel):
+    title: str = Field(max_length=200)
+
+
 def create_app(
     store: ConversationStore, answer: AnswerStream, page_dir: Path = PAGE_DIR
 ) -> FastAPI:
@@ -78,6 +82,25 @@ def create_app(
             "conversation": _summary(conversation),
             "messages": read_history(items),
         }
+
+    @app.patch("/api/conversations/{conversation_id}")
+    async def rename_conversation(
+        conversation: Annotated[Conversation, Depends(own_conversation)],
+        body: RenameIn,
+    ) -> dict[str, Any]:
+        """Rename a Conversation, tidying the title's spacing; it can't be blank."""
+        title = " ".join(body.title.split())
+        if not title:
+            raise HTTPException(status_code=422, detail="A title can't be blank.")
+        store.rename(conversation.id, title)
+        return {"id": conversation.id, "title": title}
+
+    @app.delete("/api/conversations/{conversation_id}", status_code=204)
+    async def delete_conversation(
+        conversation: Annotated[Conversation, Depends(own_conversation)],
+    ) -> None:
+        """Delete a Conversation and its history, permanently."""
+        store.delete(conversation.id)
 
     @app.post("/api/conversations", status_code=201)
     async def start_conversation(body: QuestionIn) -> dict[str, Any]:

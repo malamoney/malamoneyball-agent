@@ -22,6 +22,10 @@ export interface AssistantApi {
   /** The User's Conversations, most recently used first. */
   listConversations(): Promise<ConversationSummary[]>;
   openConversation(conversationId: string): Promise<OpenedConversation>;
+  /** Rename a Conversation; resolves with the title as saved (spacing tidied). */
+  renameConversation(conversationId: string, title: string): Promise<ConversationSummary>;
+  /** Delete a Conversation and its history, permanently. */
+  deleteConversation(conversationId: string): Promise<void>;
   startConversation(firstQuestion: string): Promise<ConversationSummary>;
   ask(conversationId: string, question: string): AsyncIterable<AnswerEvent>;
 }
@@ -32,7 +36,16 @@ export const httpApi: AssistantApi = {
   },
 
   async openConversation(conversationId) {
-    return json(await fetch(`/api/conversations/${encodeURIComponent(conversationId)}`));
+    return json(await fetch(conversationUrl(conversationId)));
+  },
+
+  async renameConversation(conversationId, title) {
+    return json(await send("PATCH", conversationUrl(conversationId), { title }));
+  },
+
+  async deleteConversation(conversationId) {
+    const response = await fetch(conversationUrl(conversationId), { method: "DELETE" });
+    if (!response.ok) throw await failure(response);
   },
 
   async startConversation(firstQuestion) {
@@ -40,10 +53,7 @@ export const httpApi: AssistantApi = {
   },
 
   async *ask(conversationId, question) {
-    const response = await post(
-      `/api/conversations/${encodeURIComponent(conversationId)}/questions`,
-      { question },
-    );
+    const response = await post(`${conversationUrl(conversationId)}/questions`, { question });
     if (!response.ok || !response.body) throw await failure(response);
     for await (const { event, data } of readServerSentEvents(response.body)) {
       yield { event, data: JSON.parse(data) } as AnswerEvent;
@@ -51,9 +61,17 @@ export const httpApi: AssistantApi = {
   },
 };
 
+function conversationUrl(conversationId: string): string {
+  return `/api/conversations/${encodeURIComponent(conversationId)}`;
+}
+
 function post(url: string, body: unknown): Promise<Response> {
+  return send("POST", url, body);
+}
+
+function send(method: string, url: string, body: unknown): Promise<Response> {
   return fetch(url, {
-    method: "POST",
+    method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });

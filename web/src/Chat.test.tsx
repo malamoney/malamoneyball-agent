@@ -46,6 +46,11 @@ function setup(saved: SavedConversation[] = []) {
       const { title, messages } = saved.find((c) => c.id === id)!;
       return { conversation: { id, title }, messages };
     }),
+    renameConversation: vi.fn(async (id: string, title: string) => ({
+      id,
+      title: title.trim().replace(/\s+/g, " "),
+    })),
+    deleteConversation: vi.fn(async (_id: string) => {}),
     startConversation: vi.fn(async (question: string) => ({ id: "new", title: question })),
     ask: vi.fn((_id: string, _question: string) => answer.stream()),
   } satisfies AssistantApi;
@@ -88,8 +93,8 @@ const conversationLog = () => screen.getByRole("list", { name: "Conversation" })
 const sidebar = () => screen.getByRole("navigation", { name: "Conversations" });
 const sidebarTitles = () =>
   within(sidebar())
-    .getAllByRole("listitem")
-    .map((item) => item.textContent);
+    .queryAllByRole("listitem")
+    .map((item) => within(item).getAllByRole("button")[0].textContent);
 const openInSidebar = () =>
   within(sidebar()).getByRole("button", { current: "page" }).textContent;
 
@@ -230,4 +235,102 @@ it("shows an error when the answer fails", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("Razzball is down.");
   expect(within(conversationLog()).getByText("Who should I start at QB?")).toBeInTheDocument();
   expect(screen.getByLabelText("Question")).toHaveValue("");
+});
+
+it("renames a conversation from the sidebar", async () => {
+  const { api, user } = setup([QB, DEFENSE]);
+  await screen.findByText("Josh Allen");
+
+  await user.click(screen.getByRole("button", { name: `Rename "${DEFENSE.title}"` }));
+  const field = screen.getByRole("textbox", { name: "Conversation title" });
+  expect(field).toHaveValue(DEFENSE.title);
+  await user.clear(field);
+  await user.type(field, "Week 7   defenses{Enter}");
+
+  expect(api.renameConversation).toHaveBeenCalledTimes(1);
+  expect(api.renameConversation).toHaveBeenCalledWith("def", "Week 7   defenses");
+  expect(sidebarTitles()).toEqual([QB.title, "Week 7 defenses"]);
+});
+
+it("renaming the open conversation updates its heading", async () => {
+  const { user } = setup([QB]);
+  await screen.findByText("Josh Allen");
+
+  await user.click(screen.getByRole("button", { name: `Rename "${QB.title}"` }));
+  await user.clear(screen.getByRole("textbox", { name: "Conversation title" }));
+  await user.type(screen.getByRole("textbox", { name: "Conversation title" }), "QBs{Enter}");
+
+  expect(screen.getByRole("banner")).toHaveTextContent("QBs");
+});
+
+it("escape cancels a rename", async () => {
+  const { api, user } = setup([QB]);
+  await screen.findByText("Josh Allen");
+
+  await user.click(screen.getByRole("button", { name: `Rename "${QB.title}"` }));
+  await user.type(screen.getByRole("textbox", { name: "Conversation title" }), " edited{Escape}");
+
+  expect(api.renameConversation).not.toHaveBeenCalled();
+  expect(sidebarTitles()).toEqual([QB.title]);
+});
+
+it("deletes a conversation after confirming", async () => {
+  const { api, user } = setup([QB, DEFENSE]);
+  await screen.findByText("Josh Allen");
+
+  await user.click(screen.getByRole("button", { name: `Delete "${DEFENSE.title}"` }));
+  const dialog = screen.getByRole("alertdialog", { name: "Delete this conversation?" });
+  expect(dialog).toHaveTextContent(DEFENSE.title);
+  await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+
+  expect(api.deleteConversation).toHaveBeenCalledWith("def");
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  expect(sidebarTitles()).toEqual([QB.title]);
+  expect(screen.getByText("Josh Allen")).toBeInTheDocument(); // the open one stays open
+});
+
+it("cancelling a delete changes nothing", async () => {
+  const { api, user } = setup([QB, DEFENSE]);
+  await screen.findByText("Josh Allen");
+
+  await user.click(screen.getByRole("button", { name: `Delete "${QB.title}"` }));
+  await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+  expect(api.deleteConversation).not.toHaveBeenCalled();
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  expect(sidebarTitles()).toEqual([QB.title, DEFENSE.title]);
+});
+
+it("escape also cancels a delete", async () => {
+  const { api, user } = setup([QB]);
+  await screen.findByText("Josh Allen");
+
+  await user.click(screen.getByRole("button", { name: `Delete "${QB.title}"` }));
+  await user.keyboard("{Escape}");
+
+  expect(api.deleteConversation).not.toHaveBeenCalled();
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+});
+
+it("deleting the open conversation opens the next most recent", async () => {
+  const { user } = setup([QB, DEFENSE]);
+  await screen.findByText("Josh Allen");
+
+  await user.click(screen.getByRole("button", { name: `Delete "${QB.title}"` }));
+  await user.click(screen.getByRole("button", { name: "Delete" }));
+
+  expect(await screen.findByText("Ravens")).toBeInTheDocument();
+  expect(openInSidebar()).toBe(DEFENSE.title);
+});
+
+it("deleting the last conversation leaves an empty new one", async () => {
+  const { user } = setup([QB]);
+  await screen.findByText("Josh Allen");
+
+  await user.click(screen.getByRole("button", { name: `Delete "${QB.title}"` }));
+  await user.click(screen.getByRole("button", { name: "Delete" }));
+
+  expect(sidebarTitles()).toEqual([]);
+  expect(screen.queryByText("Josh Allen")).not.toBeInTheDocument();
+  expect(screen.getByText(/Ask about this week's projections/)).toBeInTheDocument();
 });
