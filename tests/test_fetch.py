@@ -1,6 +1,6 @@
 import requests
 
-from malamoneyball_agent import agent
+from malamoneyball_agent import razzball
 
 
 def week(*players: tuple[str, str]) -> dict:
@@ -88,10 +88,10 @@ def test_cached_week_is_downloaded_again_after_the_cache_window(
     call_projections_tool, monkeypatch
 ):
     now = 1000.0
-    monkeypatch.setattr(agent, "_now", lambda: now)
+    monkeypatch.setattr(razzball, "_now", lambda: now)
     call_projections_tool({"season": "2026", "week": "3"}, WEEK_3)
 
-    now += agent.PROJECTIONS_CACHE_SECONDS + 1
+    now += razzball.PROJECTIONS_CACHE_SECONDS + 1
     call_projections_tool({"season": "2026", "week": "3"}, WEEK_3)
 
     assert call_projections_tool.requests_made == 2

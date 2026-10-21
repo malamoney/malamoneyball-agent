@@ -8,7 +8,7 @@ import pytest
 import requests
 from agents.tool_context import ToolContext
 
-from malamoneyball_agent import agent
+from malamoneyball_agent import assistant, razzball
 
 
 @dataclass
@@ -45,14 +45,14 @@ class ProjectionsToolCaller:
         self.get.return_value = fake
         self.get.side_effect = error
 
-        tool = agent.fetch_razzball_projections
+        tool = assistant.fetch_razzball_projections
         ctx = ToolContext(
             context=None,
             tool_name=tool.name,
             tool_call_id="1",
             tool_arguments=json.dumps(arguments),
         )
-        with mock.patch.object(agent.requests, "get", self.get):
+        with mock.patch.object(razzball.requests, "get", self.get):
             output = asyncio.run(tool.on_invoke_tool(ctx, json.dumps(arguments)))
 
         url = self.get.call_args.args[0] if self.get.call_args else ""
@@ -61,7 +61,7 @@ class ProjectionsToolCaller:
 
 @pytest.fixture(autouse=True)
 def empty_projections_cache():
-    agent._projections_cache.clear()
+    razzball._projections_cache.clear()
 
 
 @pytest.fixture

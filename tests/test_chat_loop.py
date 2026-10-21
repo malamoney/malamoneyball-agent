@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from malamoneyball_agent import agent
+from malamoneyball_agent import terminal
 
 
 @pytest.fixture
@@ -15,7 +15,7 @@ def chat(monkeypatch, tmp_path):
     """
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setattr(agent, "load_dotenv", lambda: None)
+    monkeypatch.setattr(terminal, "load_dotenv", lambda: None)
 
     def run(*typed, answer=lambda message: f"re: {message}"):
         remaining = iter(typed)
@@ -28,13 +28,13 @@ def chat(monkeypatch, tmp_path):
 
         monkeypatch.setattr("builtins.input", fake_input)
         monkeypatch.setattr(
-            agent.Runner,
+            terminal.Runner,
             "run_sync",
             lambda _agent, message, session: SimpleNamespace(
                 final_output=answer(message)
             ),
         )
-        agent.main()
+        terminal.main()
 
     return run
 
