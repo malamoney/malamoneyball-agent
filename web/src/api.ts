@@ -4,8 +4,8 @@ export type Message = { role: "question" | "answer"; text: string };
 
 export type ConversationSummary = { id: string; title: string };
 
-export type LatestConversation = {
-  conversation: ConversationSummary | null;
+export type OpenedConversation = {
+  conversation: ConversationSummary;
   messages: Message[];
 };
 
@@ -19,14 +19,20 @@ export type AnswerEvent =
 
 /** What the page needs from the server; tests pass a scripted fake. */
 export interface AssistantApi {
-  latestConversation(): Promise<LatestConversation>;
+  /** The User's Conversations, most recently used first. */
+  listConversations(): Promise<ConversationSummary[]>;
+  openConversation(conversationId: string): Promise<OpenedConversation>;
   startConversation(firstQuestion: string): Promise<ConversationSummary>;
   ask(conversationId: string, question: string): AsyncIterable<AnswerEvent>;
 }
 
 export const httpApi: AssistantApi = {
-  async latestConversation() {
-    return json(await fetch("/api/conversations/latest"));
+  async listConversations() {
+    return json(await fetch("/api/conversations"));
+  },
+
+  async openConversation(conversationId) {
+    return json(await fetch(`/api/conversations/${encodeURIComponent(conversationId)}`));
   },
 
   async startConversation(firstQuestion) {

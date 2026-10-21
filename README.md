@@ -103,8 +103,9 @@ Then start the server and open http://localhost:8000:
 uv run malamoneyball-web
 ```
 
-The page opens your most recent conversation. Answers stream in as they're
-written, and "Looking up…" shows while projections are fetched. The server
+The page opens your most recent conversation. The sidebar lists all of them,
+most recently used first: click one to open it, or "New Conversation" to start
+fresh. Answers stream in as they're written, and "Looking up…" shows while projections are fetched. The server
 only listens on this machine (127.0.0.1), so nobody else on your network can
 reach it.
 
@@ -151,5 +152,5 @@ The code lives in `src/malamoneyball_agent/`:
 - `nfl_calendar.py` works out the current NFL season and week.
 
 The web page lives in `web/` (React, TypeScript and Tailwind, built with
-Vite); `web/src/Chat.tsx` is the page and `web/src/api.ts` talks to the
-server.
+Vite); `web/src/Chat.tsx` is the page, `web/src/Sidebar.tsx` lists the
+conversations, and `web/src/api.ts` talks to the server.

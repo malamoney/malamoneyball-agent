@@ -115,23 +115,58 @@ def test_failed_answer_ends_with_an_error_event(store):
     ]
 
 
-def test_latest_conversation_is_empty_at_first(store):
-    response = client_for(store).get("/api/conversations/latest")
-
-    assert response.json() == {"conversation": None, "messages": []}
+def test_no_conversations_at_first(store):
+    assert client_for(store).get("/api/conversations").json() == []
 
 
-def test_latest_conversation_shows_the_saved_history(store):
+def test_conversations_are_listed_most_recently_used_first(store):
+    client = client_for(store)
+    for question in ["QB?", "WR?", "TE?"]:
+        client.post("/api/conversations", json={"question": question})
+
+    listed = client.get("/api/conversations").json()
+
+    assert [c["title"] for c in listed] == ["TE?", "WR?", "QB?"]
+    assert set(listed[0]) == {"id", "title"}
+
+
+def test_list_leaves_out_other_users_conversations(store):
+    store.start("someone-else", "Their question")
+
+    assert client_for(store).get("/api/conversations").json() == []
+
+
+def test_opening_a_conversation_shows_its_history(store):
     client = client_for(store)
     ask(client, "Who should I start at QB?")
+    conversation_id = client.get("/api/conversations").json()[0]["id"]
 
-    latest = client.get("/api/conversations/latest").json()
+    opened = client.get(f"/api/conversations/{conversation_id}").json()
 
-    assert latest["conversation"]["title"] == "Who should I start at QB?"
-    assert latest["messages"] == [
-        {"role": "question", "text": "Who should I start at QB?"},
-        {"role": "answer", "text": "Start **Josh Allen**."},
-    ]
+    assert opened == {
+        "conversation": {"id": conversation_id, "title": "Who should I start at QB?"},
+        "messages": [
+            {"role": "question", "text": "Who should I start at QB?"},
+            {"role": "answer", "text": "Start **Josh Allen**."},
+        ],
+    }
+
+
+def test_a_new_conversation_opens_empty(store):
+    client = client_for(store)
+    started = client.post("/api/conversations", json={"question": "QB?"}).json()
+
+    opened = client.get(f"/api/conversations/{started['id']}").json()
+
+    assert opened == {"conversation": started, "messages": []}
+
+
+def test_opening_an_unknown_or_others_conversation_is_not_found(store):
+    theirs = store.start("someone-else", "Their question")
+    client = client_for(store)
+
+    assert client.get("/api/conversations/nope").status_code == 404
+    assert client.get(f"/api/conversations/{theirs.id}").status_code == 404
 
 
 def test_new_conversation_is_titled_after_its_first_question(store):
@@ -152,7 +187,7 @@ def test_asking_in_a_conversation_makes_it_the_most_recent(store):
 
     ask_in(client, first["id"], "QB?")
 
-    assert client.get("/api/conversations/latest").json()["conversation"] == first
+    assert client.get("/api/conversations").json()[0] == first
 
 
 def test_web_and_terminal_share_the_conversation(store, run_chat):
