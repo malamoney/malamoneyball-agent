@@ -1,12 +1,14 @@
 import json
+import sqlite3
 from collections.abc import AsyncIterator
+from contextlib import closing
 from typing import Any
 
 import pytest
 from agents import Session
 from fastapi.testclient import TestClient
 
-from malamoneyball_agent import web
+from malamoneyball_agent import terminal, web
 from malamoneyball_agent.answers import AnswerEvent
 from malamoneyball_agent.conversations import LOCAL_USER, ConversationStore
 
@@ -262,3 +264,66 @@ def test_server_exits_with_clear_message_without_openai_key(monkeypatch):
         web.main()
 
     assert "OPENAI_API_KEY is not set" in str(exc_info.value.code)
+
+
+def test_rename_changes_the_title_everywhere(store, monkeypatch, capsys):
+    client = client_for(store)
+    started = client.post("/api/conversations", json={"question": "QB?"}).json()
+
+    response = client.patch(
+        f"/api/conversations/{started['id']}", json={"title": "  Week 7   QBs "}
+    )
+
+    assert response.json() == {"id": started["id"], "title": "Week 7 QBs"}
+    assert client.get("/api/conversations").json()[0]["title"] == "Week 7 QBs"
+    monkeypatch.setattr(terminal, "load_dotenv", lambda: None)
+    terminal.main(["--list"])
+    assert capsys.readouterr().out.split("  ", 1)[1] == "Week 7 QBs\n"
+
+
+def test_rename_to_a_blank_title_is_rejected(store):
+    client = client_for(store)
+    started = client.post("/api/conversations", json={"question": "QB?"}).json()
+
+    response = client.patch(f"/api/conversations/{started['id']}", json={"title": " "})
+
+    assert response.status_code == 422
+    assert client.get("/api/conversations").json()[0]["title"] == "QB?"
+
+
+def test_delete_removes_the_conversation_and_its_history(store):
+    client = client_for(store)
+    ask(client, "Who should I start at QB?")
+    kept = client.post("/api/conversations", json={"question": "WR?"}).json()
+    ask_in(client, kept["id"], "WR?")
+    deleted = client.get("/api/conversations").json()[1]
+
+    response = client.delete(f"/api/conversations/{deleted['id']}")
+
+    assert response.status_code == 204
+    assert client.get("/api/conversations").json() == [kept]
+    assert client.get(f"/api/conversations/{deleted['id']}").status_code == 404
+    with closing(sqlite3.connect(store.db_path)) as conn:
+        saved = conn.execute(
+            "SELECT session_id, COUNT(*) FROM agent_messages GROUP BY session_id"
+        ).fetchall()
+    assert saved == [(kept["id"], 2)]
+
+
+def test_delete_a_conversation_with_no_questions_yet(store):
+    client = client_for(store)
+    started = client.post("/api/conversations", json={"question": "QB?"}).json()
+
+    assert client.delete(f"/api/conversations/{started['id']}").status_code == 204
+    assert client.get("/api/conversations").json() == []
+
+
+def test_rename_or_delete_another_users_conversation_is_not_found(store):
+    theirs = store.start("someone-else", "Their question")
+    client = client_for(store)
+
+    rename = client.patch(f"/api/conversations/{theirs.id}", json={"title": "Mine"})
+    delete = client.delete(f"/api/conversations/{theirs.id}")
+
+    assert (rename.status_code, delete.status_code) == (404, 404)
+    assert [c.title for c in store.recent("someone-else")] == ["Their question"]

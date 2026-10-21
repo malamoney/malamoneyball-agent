@@ -48,6 +48,31 @@ export function Chat({ api }: { api: AssistantApi }) {
     questionBox.current?.focus();
   }
 
+  async function rename(conversationId: string, title: string) {
+    try {
+      const renamed = await api.renameConversation(conversationId, title);
+      setConversations((current) => current.map((c) => (c.id === renamed.id ? renamed : c)));
+    } catch (failure) {
+      setError(errorText(failure));
+    }
+  }
+
+  async function remove(conversationId: string) {
+    try {
+      await api.deleteConversation(conversationId);
+    } catch (failure) {
+      setError(errorText(failure));
+      return;
+    }
+    const remaining = conversations.filter((c) => c.id !== conversationId);
+    setConversations(remaining);
+    // Deleting the open Conversation opens the next most recent, if any.
+    if (conversationId === openId) {
+      if (remaining.length) void open(remaining[0].id);
+      else startNew();
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     api.listConversations().then(
@@ -124,6 +149,8 @@ export function Chat({ api }: { api: AssistantApi }) {
           if (conversationId !== openId) void open(conversationId);
         }}
         onNew={startNew}
+        onRename={(conversationId, title) => void rename(conversationId, title)}
+        onDelete={(conversationId) => void remove(conversationId)}
       />
       <div className="flex min-w-0 flex-1 flex-col">
       <header className="border-b border-stone-200 bg-white px-4 py-3">

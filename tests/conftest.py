@@ -75,9 +75,14 @@ def call_projections_tool(monkeypatch) -> ProjectionsToolCaller:
 
 @pytest.fixture(autouse=True)
 def data_dir(monkeypatch, tmp_path: Path) -> Path:
-    """Keep every test's Conversations out of the real per-user folder."""
+    """Keep every test's Conversations out of the real per-user folder.
+
+    Tests also start in a temporary folder, so none imports a real old
+    `sessions.db` from the project folder.
+    """
     path = tmp_path / "data"
     monkeypatch.setenv("MALAMONEYBALL_DATA_DIR", str(path))
+    monkeypatch.chdir(tmp_path)
     return path
 
 
