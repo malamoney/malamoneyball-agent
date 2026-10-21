@@ -59,12 +59,16 @@ def create_app(
             raise HTTPException(status_code=404, detail="No such conversation.")
         return conversation
 
-    @app.get("/api/conversations/latest")
-    async def latest_conversation() -> dict[str, Any]:
-        """The User's most recently used Conversation and its history, if any."""
-        conversation = store.most_recent(LOCAL_USER)
-        if conversation is None:
-            return {"conversation": None, "messages": []}
+    @app.get("/api/conversations")
+    async def list_conversations() -> list[dict[str, Any]]:
+        """The User's Conversations, most recently used first."""
+        return [_summary(conversation) for conversation in store.recent(LOCAL_USER)]
+
+    @app.get("/api/conversations/{conversation_id}")
+    async def open_conversation(
+        conversation: Annotated[Conversation, Depends(own_conversation)],
+    ) -> dict[str, Any]:
+        """A Conversation and its Questions and Answers."""
         session = store.session(conversation.id)
         try:
             items = await session.get_items()

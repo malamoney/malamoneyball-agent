@@ -3,38 +3,70 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import type { AssistantApi, ConversationSummary, Message } from "./api";
+import { Sidebar } from "./Sidebar";
 
 /** The Answer being written: its text so far, and how many lookups are running. */
 type Streaming = { text: string; lookupsRunning: number };
 
 export function Chat({ api }: { api: AssistantApi }) {
-  const [conversation, setConversation] = useState<ConversationSummary | null>(null);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [streaming, setStreaming] = useState<Streaming | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const end = useRef<HTMLDivElement>(null);
+  const questionBox = useRef<HTMLTextAreaElement>(null);
+  // Counts openings, so a slow response for an earlier click is ignored.
+  const latestOpening = useRef(0);
   const busy = streaming !== null;
+  const openConversation = conversations.find((c) => c.id === openId) ?? null;
+
+  async function open(conversationId: string) {
+    const opening = ++latestOpening.current;
+    setOpenId(conversationId);
+    setMessages([]);
+    setError(null);
+    setLoading(true);
+    try {
+      const opened = await api.openConversation(conversationId);
+      if (opening === latestOpening.current) setMessages(opened.messages);
+    } catch (failure) {
+      if (opening === latestOpening.current) setError(errorText(failure));
+    } finally {
+      if (opening === latestOpening.current) setLoading(false);
+    }
+  }
+
+  function startNew() {
+    latestOpening.current++;
+    setOpenId(null);
+    setMessages([]);
+    setError(null);
+    setLoading(false);
+    questionBox.current?.focus();
+  }
 
   useEffect(() => {
     let cancelled = false;
-    api.latestConversation().then(
-      (latest) => {
+    api.listConversations().then(
+      (listed) => {
         if (cancelled) return;
-        setConversation(latest.conversation);
-        setMessages(latest.messages);
-        setLoaded(true);
+        setConversations(listed);
+        if (listed.length) void open(listed[0].id);
+        else setLoading(false);
       },
       (failure: unknown) => {
         if (cancelled) return;
         setError(errorText(failure));
-        setLoaded(true);
+        setLoading(false);
       },
     );
     return () => {
       cancelled = true;
     };
+    // `open` only uses `api` and state setters, so this runs once per api.
   }, [api]);
 
   useEffect(() => {
@@ -49,9 +81,11 @@ export function Chat({ api }: { api: AssistantApi }) {
     let lookupsRunning = 0;
     setStreaming({ text, lookupsRunning });
     try {
-      const current = conversation ?? (await api.startConversation(question));
-      setConversation(current);
-      for await (const event of api.ask(current.id, question)) {
+      const asked = openConversation ?? (await api.startConversation(question));
+      setOpenId(asked.id);
+      // Asking makes a Conversation the most recently used.
+      setConversations((current) => [asked, ...current.filter((c) => c.id !== asked.id)]);
+      for await (const event of api.ask(asked.id, question)) {
         if (event.event === "done") break;
         if (event.event === "error") throw new Error(event.data.message);
         if (event.event === "text") text += event.data.text;
@@ -81,19 +115,29 @@ export function Chat({ api }: { api: AssistantApi }) {
   }
 
   return (
-    <div className="flex h-dvh flex-col bg-stone-50 text-stone-900">
+    <div className="flex h-dvh bg-stone-50 text-stone-900">
+      <Sidebar
+        conversations={conversations}
+        openId={openId}
+        busy={busy}
+        onOpen={(conversationId) => {
+          if (conversationId !== openId) void open(conversationId);
+        }}
+        onNew={startNew}
+      />
+      <div className="flex min-w-0 flex-1 flex-col">
       <header className="border-b border-stone-200 bg-white px-4 py-3">
         <div className="mx-auto flex max-w-2xl items-baseline gap-3">
           <h1 className="shrink-0 font-semibold tracking-tight">Malamoneyball</h1>
-          {conversation && (
-            <p className="truncate text-sm text-stone-500">{conversation.title}</p>
+          {openConversation && (
+            <p className="truncate text-sm text-stone-500">{openConversation.title}</p>
           )}
         </div>
       </header>
 
       <main className="flex-1 overflow-y-auto px-4">
         <ol aria-label="Conversation" className="mx-auto max-w-2xl space-y-6 py-6">
-          {loaded && messages.length === 0 && !busy && !error && (
+          {!loading && messages.length === 0 && !busy && !error && (
             <li className="text-stone-500">
               Ask about this week's projections, like "Should I start Josh Allen or Lamar
               Jackson?"
@@ -134,6 +178,7 @@ export function Chat({ api }: { api: AssistantApi }) {
           </label>
           <textarea
             id="question"
+            ref={questionBox}
             rows={1}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
@@ -150,6 +195,7 @@ export function Chat({ api }: { api: AssistantApi }) {
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 }
