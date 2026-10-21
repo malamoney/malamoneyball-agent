@@ -34,13 +34,13 @@ def chat(monkeypatch, tmp_path):
                 final_output=answer(message)
             ),
         )
-        terminal.main()
+        terminal.main([])
 
     return run
 
 
-def history_files(tmp_path):
-    return sorted(path.name for path in tmp_path.iterdir())
+def history_files(data_dir):
+    return sorted(path.name for path in data_dir.iterdir())
 
 
 def test_failed_turn_prints_error_and_prompt_returns(chat, capsys):
@@ -57,22 +57,22 @@ def test_failed_turn_prints_error_and_prompt_returns(chat, capsys):
     assert "Agent: re: second" in out.out
 
 
-def test_ctrl_d_at_prompt_exits_cleanly(chat, tmp_path):
+def test_ctrl_d_at_prompt_exits_cleanly(chat, data_dir):
     chat("hello", EOFError())
 
-    assert history_files(tmp_path) == ["sessions.db"]
+    assert history_files(data_dir) == ["conversations.db"]
 
 
-def test_ctrl_c_at_prompt_exits_cleanly(chat, tmp_path):
+def test_ctrl_c_at_prompt_exits_cleanly(chat, data_dir):
     chat("hello", KeyboardInterrupt())
 
-    assert history_files(tmp_path) == ["sessions.db"]
+    assert history_files(data_dir) == ["conversations.db"]
 
 
-def test_ctrl_c_while_agent_is_answering_exits_cleanly(chat, tmp_path):
+def test_ctrl_c_while_agent_is_answering_exits_cleanly(chat, data_dir):
     def answer(message):
         raise KeyboardInterrupt
 
     chat("hello", answer=answer)
 
-    assert history_files(tmp_path) == ["sessions.db"]
+    assert history_files(data_dir) == ["conversations.db"]

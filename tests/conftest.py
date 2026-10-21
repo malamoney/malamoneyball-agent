@@ -1,6 +1,9 @@
 import asyncio
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest import mock
 
@@ -8,7 +11,7 @@ import pytest
 import requests
 from agents.tool_context import ToolContext
 
-from malamoneyball_agent import assistant, razzball
+from malamoneyball_agent import assistant, razzball, terminal
 
 
 @dataclass
@@ -68,3 +71,41 @@ def empty_projections_cache():
 def call_projections_tool(monkeypatch) -> ProjectionsToolCaller:
     monkeypatch.setenv("RAZZBALL_API_KEY", "test-key")
     return ProjectionsToolCaller()
+
+
+@pytest.fixture(autouse=True)
+def data_dir(monkeypatch, tmp_path: Path) -> Path:
+    """Keep every test's Conversations out of the real per-user folder."""
+    path = tmp_path / "data"
+    monkeypatch.setenv("MALAMONEYBALL_DATA_DIR", str(path))
+    return path
+
+
+@pytest.fixture
+def run_chat(monkeypatch, tmp_path) -> Callable[..., list[list[str]]]:
+    """Run the terminal chat with typed `questions`, then 'exit'.
+
+    Starts in `tmp_path` with an OpenAI key set and a fake Assistant. Returns,
+    for each Question, the Questions its Conversation already held when the
+    Assistant was asked to answer it.
+    """
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(terminal, "load_dotenv", lambda: None)
+
+    def run(*questions: str, args: tuple[str, ...] = ()) -> list[list[str]]:
+        typed = iter([*questions, "exit"])
+        monkeypatch.setattr("builtins.input", lambda _: next(typed))
+        history_seen: list[list[str]] = []
+
+        def fake_run_sync(_agent, user_input, session):
+            items = asyncio.run(session.get_items())
+            history_seen.append([item["content"] for item in items])
+            asyncio.run(session.add_items([{"role": "user", "content": user_input}]))
+            return SimpleNamespace(final_output="ok")
+
+        monkeypatch.setattr(terminal.Runner, "run_sync", fake_run_sync)
+        terminal.main(list(args))
+        return history_seen
+
+    return run

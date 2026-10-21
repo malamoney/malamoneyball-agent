@@ -56,7 +56,7 @@ def test_model_set_in_dotenv_is_used(monkeypatch, tmp_path):
         return SimpleNamespace(final_output="ok")
 
     monkeypatch.setattr(terminal.Runner, "run_sync", fake_run_sync)
-    terminal.main()
+    terminal.main([])
 
     assert models_used == ["from-dotenv"]
 
