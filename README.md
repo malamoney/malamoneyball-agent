@@ -82,6 +82,10 @@ Good to know:
   half-PPR, DraftKings or FanDuel). RotoWire only projects DraftKings points,
   so answers compare it with Razzball's DraftKings points and label which
   scoring each number uses.
+- **Team defenses:** Razzball's DraftKings points for defenses run about 4
+  points above what DraftKings' scoring rules give for Razzball's own
+  projected stats, and above RotoWire's. Answers show both Razzball numbers,
+  and compare the rules-based one with RotoWire.
 - **"This week":** follows the NFL calendar. Weeks run Tuesday to Monday,
   starting the week of the Thursday after Labor Day. Outside the regular
   season, name a week explicitly.
