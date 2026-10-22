@@ -4,9 +4,10 @@ import os
 
 from agents import Agent, function_tool
 
-from malamoneyball_agent.models import RotoWirePlayer
+from malamoneyball_agent.draftkings_scoring import draftkings_points
+from malamoneyball_agent.models import NFLPlayerProjection, RotoWirePlayer
 from malamoneyball_agent.nfl_calendar import get_nfl_season, get_nfl_week
-from malamoneyball_agent.razzball import download_week
+from malamoneyball_agent.razzball import defense_stats, download_week
 from malamoneyball_agent.rotowire import download_main_slate
 
 # Used when OPENAI_MODEL isn't set.
@@ -29,10 +30,14 @@ def fetch_razzball_projections(
     Each player comes back with name, position, team, opponent, projected
     points for standard, half-PPR, PPR, DraftKings and FanDuel scoring, and
     rotowire_id, the same player's id in RotoWire's projections (null for team
-    defenses, which match by team). Results are sorted by projected PPR
-    points, highest first. Returns an empty list when no week is given and the
-    NFL regular season isn't under way. A player missing from a week usually
-    has a bye or isn't expected to play.
+    defenses, which match by team). Team defenses also have
+    draftkings_points_by_rules: Razzball's projected defensive stats scored
+    with DraftKings' rules, which come out lower than Razzball's own
+    DraftKings points (blocked kicks and returned 2-point conversions and
+    extra points aren't projected, so they count as zero). Results are sorted
+    by projected PPR points, highest first. Returns an empty list when no week
+    is given and the NFL regular season isn't under way. A player missing from
+    a week usually has a bye or isn't expected to play.
 
     Args:
         season: Season year, e.g. "2026". Use "" for the current season.
@@ -42,6 +47,8 @@ def fetch_razzball_projections(
             individual defensive players. Use "" for all positions.
         player_name: Only return players whose name contains this text, a
             case-insensitive match on any part of the name, e.g. "allen".
+            Team defenses are named by team abbreviation, e.g. "HOU Defense",
+            so search them by abbreviation ("HOU"), not by team name.
             Use "" for all players.
         limit: Maximum number of players to return, at most 100.
     """
@@ -74,21 +81,28 @@ def fetch_razzball_projections(
 
     projections = sorted(projections, key=lambda player: player.ppr_pts, reverse=True)
 
-    return [
-        {
-            "name": player.name,
-            "position": player.pos,
-            "team": player.team,
-            "opponent": player.opp,
-            "standard_points": player.std_pts,
-            "half_ppr_points": player.halfppr_pts,
-            "ppr_points": player.ppr_pts,
-            "draftkings_points": player.dk_pts,
-            "fanduel_points": player.fd_pts,
-            "rotowire_id": _rotowire_id(player.rotowireid),
-        }
-        for player in projections[: min(limit, 100)]
-    ]
+    return [_razzball_player(player) for player in projections[: min(limit, 100)]]
+
+
+def _razzball_player(player: NFLPlayerProjection) -> dict:
+    row: dict = {
+        "name": player.name,
+        "position": player.pos,
+        "team": player.team,
+        "opponent": player.opp,
+        "standard_points": player.std_pts,
+        "half_ppr_points": player.halfppr_pts,
+        "ppr_points": player.ppr_pts,
+        "draftkings_points": player.dk_pts,
+        "fanduel_points": player.fd_pts,
+        "rotowire_id": _rotowire_id(player.rotowireid),
+    }
+    # Razzball's DraftKings points for defenses run about 4 above DraftKings'
+    # rules applied to its own stats, and above RotoWire's (issue #49).
+    if player.pos == "DEF":
+        scored = draftkings_points(defense_stats(player))
+        row["draftkings_points_by_rules"] = round(scored.total, 1)
+    return row
 
 
 def _rotowire_id(value: str | None) -> str | None:
@@ -252,6 +266,12 @@ Projections:
   DraftKings number.
 - Match a player across the two sources by rotowire_id, and team defenses by
   team.
+- For a team defense, show Razzball's DraftKings points and its
+  draftkings_points_by_rules side by side, labelled "Razzball DK" and
+  "Razzball stats, DK rules". Add one short sentence: Razzball's defense
+  numbers run about 4 points above DraftKings' rules applied to its own
+  stats, so the rules-based number is the like-for-like comparison with
+  RotoWire's.
 - RotoWire only covers this week's DraftKings main slate. If a player has a
   Razzball projection but isn't in RotoWire's, they're playing outside the
   main slate (Thursday, international, Sunday night or Monday): show Razzball's

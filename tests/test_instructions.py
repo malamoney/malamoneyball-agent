@@ -47,3 +47,9 @@ def test_start_sit_says_when_the_sources_disagree():
     assert "clear recommendation" in TEXT
     assert "toss-up" in TEXT
     assert "If the sources disagree" in TEXT
+
+
+def test_defenses_show_razzballs_number_and_the_rules_based_one():
+    assert "draftkings_points_by_rules side by side" in TEXT
+    assert "about 4 points above DraftKings' rules" in TEXT
+    assert "like-for-like comparison with RotoWire's" in TEXT
