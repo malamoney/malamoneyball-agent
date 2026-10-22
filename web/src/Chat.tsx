@@ -268,10 +268,10 @@ export function Chat({ api }: { api: AssistantApi }) {
           {streaming && (
             <li aria-busy="true">
               {streaming.text && <Answer text={streaming.text} />}
-              {streaming.lookupsRunning > 0 && (
-                <p role="status" className="mt-2 text-sm text-stone-500 dark:text-stone-400 italic">
-                  Looking up…
-                </p>
+              {streaming.lookupsRunning > 0 ? (
+                <Working label="Looking up" />
+              ) : (
+                !streaming.text && <Working label="Thinking" />
               )}
             </li>
           )}
@@ -373,4 +373,23 @@ function FailedAnswer({ reason, onRetry }: { reason: string; onRetry?: () => voi
 
 function errorText(failure: unknown): string {
   return failure instanceof Error ? failure.message : String(failure);
+}
+
+/**
+ * Shows the Assistant is working on an Answer: "Thinking" until its text
+ * starts streaming in, or "Looking up" while projections are fetched. A
+ * screen reader announces the label once; the animated dots are hidden from
+ * it so it doesn't repeat itself as they change.
+ */
+function Working({ label }: { label: string }) {
+  return (
+    <p role="status" className="mt-2 text-sm text-stone-500 dark:text-stone-400 italic">
+      {label}
+      <span aria-hidden="true" className="working-dots">
+        <span>.</span>
+        <span>.</span>
+        <span>.</span>
+      </span>
+    </p>
+  );
 }

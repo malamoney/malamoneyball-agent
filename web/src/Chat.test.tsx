@@ -189,10 +189,65 @@ it("shows a looking-up line while projections are fetched", async () => {
   await askQuestion(user, "Who should I start at QB?");
 
   await answer.send(lookupStarted);
-  expect(await screen.findByRole("status")).toHaveTextContent("Looking up…");
+  expect(await screen.findByRole("status")).toHaveTextContent(/^Looking up/);
 
   await answer.send(lookupFinished, text("Start Josh Allen."));
   expect(await screen.findByText("Start Josh Allen.")).toBeInTheDocument();
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+});
+
+it("shows thinking as soon as a question is sent", async () => {
+  const { user } = setup();
+  await askQuestion(user, "Who should I start at QB?");
+
+  expect(await screen.findByRole("status")).toHaveTextContent(/^Thinking/);
+});
+
+it("hides the thinking dots from screen readers", async () => {
+  const { user } = setup();
+  await askQuestion(user, "Who should I start at QB?");
+
+  const status = await screen.findByRole("status");
+  const dots = status.querySelector(".working-dots");
+  expect(dots).toHaveAttribute("aria-hidden", "true");
+  expect(status.textContent).toBe("Thinking...");
+});
+
+it("switches from thinking to looking up and back", async () => {
+  const { answer, user } = setup();
+  await askQuestion(user, "Who should I start at QB?");
+
+  await answer.send(lookupStarted);
+  expect(screen.getByRole("status")).toHaveTextContent(/^Looking up/);
+
+  await answer.send(lookupFinished);
+  expect(screen.getByRole("status")).toHaveTextContent(/^Thinking/);
+});
+
+it("stops thinking once the answer's text arrives", async () => {
+  const { answer, user } = setup();
+  await askQuestion(user, "Who should I start at QB?");
+
+  await answer.send(text("Start"));
+
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+});
+
+it("stops thinking when the answer finishes", async () => {
+  const { answer, user } = setup();
+  await askQuestion(user, "Who should I start at QB?");
+  await answer.send(text("Start Josh Allen."));
+  await answer.finish();
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+});
+
+it("stops thinking when stopped", async () => {
+  const { user } = setup();
+  await askQuestion(user, "Who should I start at QB?");
+  expect(await screen.findByRole("status")).toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Stop" }));
+
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
 });
 
@@ -275,6 +330,16 @@ it("asks in the conversation it opened", async () => {
 });
 
 const failed: AnswerEvent = { event: "error", data: { message: "Couldn't reach OpenAI." } };
+
+it("stops thinking when the answer fails", async () => {
+  const { answer, user } = setup();
+  await askQuestion(user, "Who should I start at QB?");
+  expect(await screen.findByRole("status")).toBeInTheDocument();
+
+  await answer.send(failed);
+
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+});
 
 it("shows a failed answer inline, after its question, with retry", async () => {
   const { answer, user } = setup();

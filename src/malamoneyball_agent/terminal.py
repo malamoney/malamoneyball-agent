@@ -3,6 +3,9 @@
 import argparse
 import os
 import sys
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 from agents import Runner, SQLiteSession
 from dotenv import load_dotenv
@@ -39,6 +42,46 @@ def _print_conversations(store: ConversationStore) -> None:
     for conversation in conversations:
         used = conversation.last_used_at.astimezone().strftime("%Y-%m-%d %H:%M")
         print(f"{used}  {conversation.title}")
+
+
+THINKING = "Thinking"
+# How often the dots change, in seconds.
+THINKING_DOT_SECONDS = 0.4
+
+
+@contextmanager
+def _thinking() -> Iterator[None]:
+    """Show "Thinking" with cycling dots on one line until the block ends.
+
+    The line is cleared afterwards, even on an error or Ctrl-C, so the Answer
+    prints where it started. Nothing is shown when output isn't a terminal,
+    e.g. piped to a file.
+    """
+    out = sys.stdout
+    if not out.isatty():
+        yield
+        return
+
+    stop = threading.Event()
+
+    def draw() -> None:
+        dots = 1
+        while True:
+            out.write(f"\r{THINKING}{'.' * dots}  ")
+            out.flush()
+            if stop.wait(THINKING_DOT_SECONDS):
+                return
+            dots = dots % 3 + 1
+
+    drawer = threading.Thread(target=draw, daemon=True)
+    drawer.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        drawer.join()
+        out.write("\r" + " " * (len(THINKING) + 5) + "\r")
+        out.flush()
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -79,7 +122,8 @@ def main(argv: list[str] | None = None) -> None:
             else:
                 store.touch(conversation.id)
             try:
-                result = Runner.run_sync(assistant, user_input, session=session)
+                with _thinking():
+                    result = Runner.run_sync(assistant, user_input, session=session)
             except Exception as error:
                 # One failed turn (network, model, tool) shouldn't end the chat.
                 print(f"\nError: {error}", file=sys.stderr)
