@@ -75,6 +75,8 @@ Things you can ask:
 - "What does RotoWire project for Jahmyr Gibbs?"
 - "What's Puka Nacua's DraftKings salary?"
 - "Which running backs are good value under $6,000?"
+- "Is this DraftKings lineup legal: Lamar Jackson, Jahmyr Gibbs, …?"
+- "I have Gibbs and Nacua. How much can I spend per player on the rest?"
 
 Good to know:
 
@@ -86,6 +88,11 @@ Good to know:
   points above what DraftKings' scoring rules give for Razzball's own
   projected stats, and above RotoWire's. Answers show both Razzball numbers,
   and compare the rules-based one with RotoWire.
+- **DraftKings lineups:** checked against DraftKings Classic rules: 1 QB,
+  2 RB, 3 WR, 1 TE, 1 FLEX (RB, WR or TE) and 1 team defense, at most $50,000
+  in salary, from at least 2 games, all on this week's main slate. The
+  assistant suggests and checks lineups; it doesn't search for the best
+  possible one.
 - **"This week":** follows the NFL calendar. Weeks run Tuesday to Monday,
   starting the week of the Thursday after Labor Day. Outside the regular
   season, name a week explicitly.

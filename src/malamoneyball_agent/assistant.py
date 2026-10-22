@@ -4,6 +4,11 @@ import os
 
 from agents import Agent, function_tool
 
+from malamoneyball_agent.draftkings_lineup import (
+    SALARY_CAP,
+    LineupPlayer,
+    check_lineup,
+)
 from malamoneyball_agent.draftkings_scoring import draftkings_points
 from malamoneyball_agent.models import NFLPlayerProjection, RotoWirePlayer
 from malamoneyball_agent.nfl_calendar import get_nfl_season, get_nfl_week
@@ -261,6 +266,96 @@ def fetch_draftkings_salaries(
     }
 
 
+@function_tool
+def check_draftkings_lineup(player_names: list[str]) -> dict:
+    """Check a DraftKings Classic lineup for this week's NFL main slate.
+
+    A legal lineup has 9 different players: 1 QB, 2 RB, 3 WR, 1 TE, 1 FLEX
+    (an RB, WR or TE) and 1 DST, with salaries totalling at most $50,000, from
+    at least 2 NFL games. Only main-slate players have DraftKings salaries.
+    Give fewer than 9 players to check a lineup that's still being built: it
+    comes back incomplete, with its open slots and the salary left for them.
+
+    Returns:
+    - legal, and complete (every slot filled)
+    - problems: every rule the lineup breaks, in plain words
+    - players: each player's slot (the checker picks the FLEX), name,
+      position, team, opponent, salary and RotoWire's projected DraftKings
+      points
+    - open_slots, salary, salary_left and salary_left_per_open_slot
+    - names_not_found: names matching no main-slate player, usually because
+      their game isn't on the main slate
+    - ambiguous_names: names matching several players, with the matches; ask
+      which one is meant, never guess
+    Players for names not found or ambiguous are left out of the check.
+
+    Args:
+        player_names: The lineup's players, each a full or partial name
+            (case-insensitive), e.g. ["Lamar Jackson", "Gibbs"]. Team
+            defenses are named after their team, e.g. "Houston Texans".
+    """
+
+    main_slate = download_main_slate()
+    chosen: dict[LineupPlayer, RotoWirePlayer] = {}
+    lineup: list[LineupPlayer] = []
+    names_not_found: list[str] = []
+    ambiguous_names: dict[str, list[str]] = {}
+    for name in player_names:
+        matches = _filter_main_slate(main_slate.players, "", name.strip())
+        exact = [p for p in matches if p.name.lower() == name.strip().lower()]
+        if len(exact) == 1:
+            matches = exact
+        if not matches:
+            names_not_found.append(name)
+        elif len(matches) > 1:
+            ambiguous_names[name] = [p.name for p in matches]
+        else:
+            player = _lineup_player(matches[0])
+            chosen[player] = matches[0]
+            lineup.append(player)
+
+    check = check_lineup(lineup)
+    per_slot = check.salary_left_per_open_slot
+    return {
+        "slate": {
+            "name": main_slate.slate.slateName,
+            "starts_at": main_slate.slate.startDate,
+        },
+        "legal": check.legal,
+        "complete": check.complete,
+        "problems": check.problems,
+        "players": [
+            {
+                "slot": slot,
+                "name": player.name,
+                "position": player.position,
+                "team": player.team,
+                "opponent": player.opponent,
+                "salary": player.salary,
+                "rotowire_draftkings_points": chosen[player].pts,
+            }
+            for slot, player in check.slots
+        ],
+        "open_slots": check.open_slots,
+        "salary": check.salary,
+        "salary_cap": SALARY_CAP,
+        "salary_left": check.salary_left,
+        "salary_left_per_open_slot": None if per_slot is None else round(per_slot),
+        "names_not_found": names_not_found,
+        "ambiguous_names": ambiguous_names,
+    }
+
+
+def _lineup_player(player: RotoWirePlayer) -> LineupPlayer:
+    return LineupPlayer(
+        name=player.name,
+        position=player.rotoPos,
+        salary=player.salary,
+        team=player.team.abbr,
+        opponent=player.opponent.team,
+    )
+
+
 def _filter_main_slate(
     players: list[RotoWirePlayer], position: str, player_name: str
 ) -> list[RotoWirePlayer]:
@@ -341,6 +436,20 @@ Salaries:
   salaries are for this week's main slate. For value, compare salary with
   projected DraftKings points from either source, e.g. points per $1,000.
 
+Lineups:
+- DraftKings Classic lineups have 9 players: 1 QB, 2 RB, 3 WR, 1 TE, 1 FLEX
+  (an RB, WR or TE) and 1 DST, at most $50,000 in salary, from at least 2
+  NFL games, all on this week's main slate.
+- To check a lineup, or one being built, use the lineup tool. Check any
+  complete lineup you propose with it before presenting it, and never
+  present an illegal lineup as legal. Say what's wrong in plain words.
+- Always give the total salary and the salary left. For a lineup still being
+  built, give the open slots and the salary left per open slot, and only
+  suggest players who fit them.
+- If a name is ambiguous, ask which player is meant. If a name isn't found,
+  say the player probably isn't on the main slate.
+- You suggest and check lineups; don't claim one is the best possible.
+
 Keep answers short. A small table works well for side-by-side numbers.
 """
 
@@ -355,5 +464,6 @@ def build_agent() -> Agent:
             fetch_razzball_projections,
             fetch_rotowire_projections,
             fetch_draftkings_salaries,
+            check_draftkings_lineup,
         ],
     )
