@@ -39,3 +39,7 @@ _Avoid_: Owner (for this meaning), user
 **Main Slate**:
 DraftKings' main set of games for an NFL week, usually the Sunday afternoon games, leaving out Thursday, international, Sunday night and Monday games. RotoWire's projections cover only the players on it.
 _Avoid_: Slate (alone), main contest
+
+**DraftKings Scoring**:
+DraftKings' NFL Classic rules for turning a stat line into DraftKings points, e.g. +4 per passing TD and +1 per reception. For a projection, a bonus or points-allowed range counts as its chance times its points, never by comparing a projected average with the cutoff.
+_Avoid_: DK rules, scoring system (alone)

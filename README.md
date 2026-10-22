@@ -171,6 +171,8 @@ The code lives in `src/malamoneyball_agent/`:
 - `conversations.py` saves conversations and their histories.
 - `razzball.py` downloads, caches and parses Razzball's projections, and
   `models.py` describes one projection row.
+- `draftkings_scoring.py` holds DraftKings' NFL Classic scoring rules and
+  turns a stat line into DraftKings points.
 - `nfl_calendar.py` works out the current NFL season and week.
 
 The web page lives in `web/` (React, TypeScript and Tailwind, built with
