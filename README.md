@@ -177,6 +177,8 @@ The code lives in `src/malamoneyball_agent/`:
   `models.py` describes one projection row.
 - `draftkings_scoring.py` holds DraftKings' NFL Classic scoring rules and
   turns a stat line into DraftKings points.
+- `draftkings_lineup.py` holds DraftKings' NFL Classic lineup rules and
+  checks whether a lineup is legal.
 - `nfl_calendar.py` works out the current NFL season and week.
 
 The web page lives in `web/` (React, TypeScript and Tailwind, built with

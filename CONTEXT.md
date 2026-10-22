@@ -43,3 +43,7 @@ _Avoid_: Slate (alone), main contest
 **DraftKings Scoring**:
 DraftKings' NFL Classic rules for turning a stat line into DraftKings points, e.g. +4 per passing TD and +1 per reception. For a projection, a bonus or points-allowed range counts as its chance times its points, never by comparing a projected average with the cutoff.
 _Avoid_: DK rules, scoring system (alone)
+
+**Lineup**:
+The 9 players a Manager enters in a DraftKings Classic contest: 1 QB, 2 RB, 3 WR, 1 TE, 1 FLEX (an RB, WR or TE) and 1 DST, costing no more than the $50,000 salary cap, from at least 2 NFL games. A Lineup with open slots is incomplete, not illegal.
+_Avoid_: Roster, team (for this meaning)
