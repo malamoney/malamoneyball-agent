@@ -69,6 +69,8 @@ Things you can ask:
 - "Best team defenses for week 5?"
 - "How many half-PPR points is Amon-Ra St. Brown projected for?"
 - "What does RotoWire project for Jahmyr Gibbs?"
+- "What's Puka Nacua's DraftKings salary?"
+- "Which running backs are good value under $6,000?"
 
 Good to know:
 
@@ -85,7 +87,8 @@ Good to know:
   `sessions.db` in the folder you started the agent from. If that file is
   there, it's imported once as a conversation called "Terminal history";
   afterwards you can delete it.
-- **RotoWire:** its projections are in DraftKings points only, for this
+- **RotoWire and DraftKings salaries:** RotoWire's projections are in
+  DraftKings points only. They and the DraftKings Classic salaries cover this
   week's DraftKings main slate only (usually the Sunday afternoon games, not
   Thursday, international, Sunday night or Monday games). They come from the
   data behind RotoWire's DraftKings optimizer page, which needs no key but

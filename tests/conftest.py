@@ -9,6 +9,7 @@ from unittest import mock
 
 import pytest
 import requests
+from agents import FunctionTool
 from agents.tool_context import ToolContext
 
 from malamoneyball_agent import assistant, razzball, rotowire, terminal
@@ -63,15 +64,16 @@ class ProjectionsToolCaller:
 
 
 class RotoWireToolCaller:
-    """Invokes the RotoWire projections tool against a fake RotoWire.
+    """Invokes a tool that reads RotoWire's main slate, against a fake RotoWire.
 
-    Set `slate_list` and `players` to the bodies (or `requests` errors) the
-    two endpoints return. `requests_made` counts requests over the whole test.
+    It starts out serving the trimmed real responses in `fixtures/`; set
+    `slate_list` and `players` to other bodies (or `requests` errors) for the
+    two endpoints to return. `requests_made` counts requests over the whole test.
     """
 
     def __init__(self) -> None:
-        self.slate_list: Any = {"slates": []}
-        self.players: Any = []
+        self.slate_list: Any = _fixture("rotowire_slate_list.json")
+        self.players: Any = _fixture("rotowire_players.json")
         self.status = {"slate_list": 200, "players": 200}
         self.get = mock.Mock(side_effect=self._respond)
 
@@ -89,8 +91,11 @@ class RotoWireToolCaller:
         fake._content = (body if isinstance(body, str) else json.dumps(body)).encode()
         return fake
 
-    def __call__(self, arguments: dict | None = None) -> Any:
-        tool = assistant.fetch_rotowire_projections
+    def __call__(
+        self,
+        arguments: dict | None = None,
+        tool: FunctionTool = assistant.fetch_rotowire_projections,
+    ) -> Any:
         raw = json.dumps(arguments or {})
         ctx = ToolContext(
             context=None, tool_name=tool.name, tool_call_id="1", tool_arguments=raw
@@ -106,8 +111,12 @@ def empty_projections_cache():
 
 
 @pytest.fixture
-def call_rotowire_tool() -> RotoWireToolCaller:
+def fake_rotowire() -> RotoWireToolCaller:
     return RotoWireToolCaller()
+
+
+def _fixture(name: str) -> Any:
+    return json.loads((Path(__file__).parent / "fixtures" / name).read_text())
 
 
 @pytest.fixture
