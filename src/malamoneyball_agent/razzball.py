@@ -5,7 +5,7 @@ import time
 import requests
 from pydantic import ValidationError
 
-from malamoneyball_agent.draftkings_scoring import DefenseStats
+from malamoneyball_agent.draftkings_scoring import DefenseStats, OffenseStats
 from malamoneyball_agent.models import NFLPlayerProjection
 
 RAZZBALL_URL = "https://api.razzball.com/nfl/projections/weekly/{season}/{week}"
@@ -75,6 +75,29 @@ def download_week(season: str, week: str, api_key: str) -> list[NFLPlayerProject
 
     _projections_cache[(season, week)] = (_now(), projections)
     return projections
+
+
+def offense_stats(projection: NFLPlayerProjection) -> OffenseStats:
+    """A player's projected stats, ready to score with DraftKings' rules.
+
+    Razzball doesn't project 2-point conversions, return TDs or offensive
+    fumble recovery TDs, so those are left out.
+    """
+    return OffenseStats(
+        is_projection=True,
+        passing_yards=projection.pass_yds,
+        passing_tds=projection.pass_td,
+        interceptions=projection.interceptions,
+        rushing_yards=projection.rush_yds,
+        rushing_tds=projection.run_td,
+        receiving_yards=projection.rec_yds,
+        receiving_tds=projection.rec_td,
+        receptions=projection.rec,
+        fumbles_lost=projection.fum_lost,
+        passing_300_bonus_chance=projection.yards_passing_300,
+        rushing_100_bonus_chance=projection.yards_rushing_100,
+        receiving_100_bonus_chance=projection.yards_receiving_100,
+    )
 
 
 def defense_stats(projection: NFLPlayerProjection) -> DefenseStats:

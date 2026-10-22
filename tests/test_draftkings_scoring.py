@@ -9,6 +9,7 @@ from malamoneyball_agent.draftkings_scoring import (
     draftkings_points,
 )
 from malamoneyball_agent.models import NFLPlayerProjection
+from malamoneyball_agent.razzball import offense_stats
 
 # Real Razzball week 7 rows for a QB, RB, WR and TE, cut to the fields scored.
 RAZZBALL_WEEK_7 = json.loads(
@@ -208,23 +209,7 @@ def test_razzball_projections_score_close_to_razzballs_own_draftkings_points(row
         {**row, "std_pts": 0, "halfppr_pts": 0, "ppr_pts": 0, "fd_pts": 0}
     )
 
-    scored = draftkings_points(
-        OffenseStats(
-            is_projection=True,
-            passing_yards=player.pass_yds,
-            passing_tds=player.pass_td,
-            interceptions=player.interceptions,
-            rushing_yards=player.rush_yds,
-            rushing_tds=player.run_td,
-            receiving_yards=player.rec_yds,
-            receiving_tds=player.rec_td,
-            receptions=player.rec,
-            fumbles_lost=player.fum_lost,
-            passing_300_bonus_chance=player.yards_passing_300,
-            rushing_100_bonus_chance=player.yards_rushing_100,
-            receiving_100_bonus_chance=player.yards_receiving_100,
-        )
-    )
+    scored = draftkings_points(offense_stats(player))
 
     assert scored.total == pytest.approx(player.dk_pts, abs=0.35)
     assert "two_point_conversions" in scored.left_out

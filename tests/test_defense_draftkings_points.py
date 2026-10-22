@@ -87,3 +87,22 @@ def test_points_allowed_is_left_out_without_razzballs_chances():
         defense_stats(NFLPlayerProjection.model_validate(row)).points_allowed_chances
         is None
     )
+
+
+def test_a_named_defense_gets_a_breakdown_of_the_rules_based_number(
+    call_projections_tool,
+):
+    arizona = call_projections_tool(
+        {"week": "7", "player_name": "ARI"}, {"projections": [ARIZONA]}
+    ).output[0]
+
+    assert arizona["draftkings_breakdown"] == {
+        "sacks": 0.95,
+        "interceptions": 1.1,
+        "fumble_recoveries": 0.44,
+        "safeties": 0.06,
+        "touchdowns": 0.48,
+        "points_allowed": 0.53,
+    }
+    assert arizona["draftkings_points_by_rules"] == 3.6
+    assert "draftkings_bonus_chances" not in arizona
