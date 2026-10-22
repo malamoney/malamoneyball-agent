@@ -35,3 +35,7 @@ _Avoid_: Error, crashed answer
 **Manager**:
 The person who runs a fantasy football team, in the fantasy-league sense. Not a User of this app, even when the same person is both.
 _Avoid_: Owner (for this meaning), user
+
+**Main Slate**:
+DraftKings' main set of games for an NFL week, usually the Sunday afternoon games, leaving out Thursday, international, Sunday night and Monday games. RotoWire's projections cover only the players on it.
+_Avoid_: Slate (alone), main contest

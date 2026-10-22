@@ -2,7 +2,8 @@
 
 A fantasy football assistant that runs in your terminal or a web page on your
 own machine. Ask it lineup questions in plain English and it answers from
-[Razzball](https://razzball.com)'s weekly NFL projections:
+[Razzball](https://razzball.com)'s weekly NFL projections, or
+[RotoWire](https://www.rotowire.com)'s when you ask for them:
 
 ```
 You: Should I start Jaxon Smith-Njigba or Christian Watson this week?
@@ -67,6 +68,7 @@ Things you can ask:
 - "Should I start Josh Allen or Lamar Jackson?"
 - "Best team defenses for week 5?"
 - "How many half-PPR points is Amon-Ra St. Brown projected for?"
+- "What does RotoWire project for Jahmyr Gibbs?"
 
 Good to know:
 
@@ -83,6 +85,11 @@ Good to know:
   `sessions.db` in the folder you started the agent from. If that file is
   there, it's imported once as a conversation called "Terminal history";
   afterwards you can delete it.
+- **RotoWire:** its projections are in DraftKings points only, for this
+  week's DraftKings main slate only (usually the Sunday afternoon games, not
+  Thursday, international, Sunday night or Monday games). They come from the
+  data behind RotoWire's DraftKings optimizer page, which needs no key but
+  isn't an official API, so it may change without notice.
 - **Speed:** each week's projections are downloaded once and reused for five
   minutes.
 

@@ -1,0 +1,90 @@
+{
+  "slates": [
+    {
+      "slateID": 10119,
+      "contestType": "Classic",
+      "slateName": "All",
+      "salaryCap": 50000,
+      "startDate": "2026-10-25 13:00:00",
+      "endDate": "2026-10-25 16:25:00",
+      "defaultSlate": true,
+      "startDateOnly": "2026-10-25",
+      "timeOnly": "01:00 PM",
+      "games": [
+        7797,
+        7798,
+        7799,
+        7819,
+        7820,
+        7821,
+        7822,
+        7823,
+        7824,
+        7825
+      ]
+    },
+    {
+      "slateID": 10137,
+      "contestType": "Classic",
+      "slateName": "Sun-Mon",
+      "salaryCap": 50000,
+      "startDate": "2026-10-25 13:00:00",
+      "endDate": "2026-10-26 20:15:00",
+      "defaultSlate": false,
+      "startDateOnly": "2026-10-25",
+      "timeOnly": "01:00 PM",
+      "games": [
+        7797,
+        7798,
+        7799,
+        7819,
+        7820,
+        7821,
+        7822,
+        7823,
+        7824,
+        7825,
+        7826,
+        7827
+      ]
+    },
+    {
+      "slateID": 10122,
+      "contestType": "Showdown",
+      "slateName": "NE @ CHI",
+      "salaryCap": 50000,
+      "startDate": "2026-10-22 20:15:00",
+      "endDate": "2026-10-22 20:15:00",
+      "defaultSlate": false,
+      "startDateOnly": "2026-10-22",
+      "timeOnly": "08:15 PM",
+      "games": [
+        7796
+      ]
+    },
+    {
+      "slateID": 10145,
+      "contestType": "Tiers",
+      "slateName": "Tiers",
+      "salaryCap": 50000,
+      "startDate": "2026-10-25 13:00:00",
+      "endDate": "2026-10-25 16:25:00",
+      "defaultSlate": false,
+      "startDateOnly": "2026-10-25",
+      "timeOnly": "01:00 PM",
+      "games": [
+        7797,
+        7798,
+        7799,
+        7819,
+        7820,
+        7821,
+        7822,
+        7823,
+        7824,
+        7825
+      ]
+    }
+  ],
+  "games": []
+}

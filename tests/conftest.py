@@ -11,7 +11,7 @@ import pytest
 import requests
 from agents.tool_context import ToolContext
 
-from malamoneyball_agent import assistant, razzball, terminal
+from malamoneyball_agent import assistant, razzball, rotowire, terminal
 
 
 @dataclass
@@ -62,9 +62,52 @@ class ProjectionsToolCaller:
         return ToolCall(url=url, output=output)
 
 
+class RotoWireToolCaller:
+    """Invokes the RotoWire projections tool against a fake RotoWire.
+
+    Set `slate_list` and `players` to the bodies (or `requests` errors) the
+    two endpoints return. `requests_made` counts requests over the whole test.
+    """
+
+    def __init__(self) -> None:
+        self.slate_list: Any = {"slates": []}
+        self.players: Any = []
+        self.status = {"slate_list": 200, "players": 200}
+        self.get = mock.Mock(side_effect=self._respond)
+
+    @property
+    def requests_made(self) -> int:
+        return self.get.call_count
+
+    def _respond(self, url: str, **_kwargs: Any) -> requests.Response:
+        endpoint = "slate_list" if url == rotowire.SLATE_LIST_URL else "players"
+        body = getattr(self, endpoint)
+        if isinstance(body, Exception):
+            raise body
+        fake = requests.Response()
+        fake.status_code = self.status[endpoint]
+        fake._content = (body if isinstance(body, str) else json.dumps(body)).encode()
+        return fake
+
+    def __call__(self, arguments: dict | None = None) -> Any:
+        tool = assistant.fetch_rotowire_projections
+        raw = json.dumps(arguments or {})
+        ctx = ToolContext(
+            context=None, tool_name=tool.name, tool_call_id="1", tool_arguments=raw
+        )
+        with mock.patch.object(rotowire.requests, "get", self.get):
+            return asyncio.run(tool.on_invoke_tool(ctx, raw))
+
+
 @pytest.fixture(autouse=True)
 def empty_projections_cache():
     razzball._projections_cache.clear()
+    rotowire._main_slate_cache.clear()
+
+
+@pytest.fixture
+def call_rotowire_tool() -> RotoWireToolCaller:
+    return RotoWireToolCaller()
 
 
 @pytest.fixture
