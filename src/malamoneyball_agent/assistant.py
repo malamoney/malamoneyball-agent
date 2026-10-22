@@ -7,7 +7,7 @@ from agents import Agent, function_tool
 from malamoneyball_agent.draftkings_scoring import draftkings_points
 from malamoneyball_agent.models import NFLPlayerProjection, RotoWirePlayer
 from malamoneyball_agent.nfl_calendar import get_nfl_season, get_nfl_week
-from malamoneyball_agent.razzball import defense_stats, download_week
+from malamoneyball_agent.razzball import defense_stats, download_week, offense_stats
 from malamoneyball_agent.rotowire import download_main_slate
 
 # Used when OPENAI_MODEL isn't set.
@@ -34,8 +34,17 @@ def fetch_razzball_projections(
     draftkings_points_by_rules: Razzball's projected defensive stats scored
     with DraftKings' rules, which come out lower than Razzball's own
     DraftKings points (blocked kicks and returned 2-point conversions and
-    extra points aren't projected, so they count as zero). Results are sorted
-    by projected PPR points, highest first. Returns an empty list when no week
+    extra points aren't projected, so they count as zero).
+
+    When player_name is given, each player also has draftkings_breakdown:
+    the points from each DraftKings scoring category (categories worth 0 are
+    left out), worked out from Razzball's projected stats with DraftKings'
+    rules. A bonus such as passing_300_bonus is its chance times 3 points;
+    draftkings_bonus_chances gives each chance, 0 to 1. The breakdown adds
+    up to draftkings_points_by_rules. Razzball doesn't project 2-point
+    conversions or return TDs, so an offensive player's breakdown usually
+    comes out a little below Razzball's own DraftKings points. Results are
+    sorted by projected PPR points, highest first. Returns an empty list when no week
     is given and the NFL regular season isn't under way. A player missing from
     a week usually has a bye or isn't expected to play.
 
@@ -81,10 +90,15 @@ def fetch_razzball_projections(
 
     projections = sorted(projections, key=lambda player: player.ppr_pts, reverse=True)
 
-    return [_razzball_player(player) for player in projections[: min(limit, 100)]]
+    # Breakdowns are for questions about named players; on every player they'd
+    # make a top-50 list several times larger.
+    explain = bool(player_name)
+    return [
+        _razzball_player(player, explain) for player in projections[: min(limit, 100)]
+    ]
 
 
-def _razzball_player(player: NFLPlayerProjection) -> dict:
+def _razzball_player(player: NFLPlayerProjection, explain: bool) -> dict:
     row: dict = {
         "name": player.name,
         "position": player.pos,
@@ -97,11 +111,27 @@ def _razzball_player(player: NFLPlayerProjection) -> dict:
         "fanduel_points": player.fd_pts,
         "rotowire_id": _rotowire_id(player.rotowireid),
     }
-    # Razzball's DraftKings points for defenses run about 4 above DraftKings'
-    # rules applied to its own stats, and above RotoWire's (issue #49).
-    if player.pos == "DEF":
-        scored = draftkings_points(defense_stats(player))
-        row["draftkings_points_by_rules"] = round(scored.total, 1)
+    # Defenses always get the rules-based number, since Razzball's runs about
+    # 4 above it and above RotoWire's (issue #49). Named players also get the
+    # breakdown behind it.
+    is_defense = player.pos == "DEF"
+    if not (is_defense or explain):
+        return row
+    stats = defense_stats(player) if is_defense else offense_stats(player)
+    scored = draftkings_points(stats)
+    row["draftkings_points_by_rules"] = round(scored.total, 1)
+    if explain:
+        row["draftkings_breakdown"] = {
+            category: round(points, 2)
+            for category, points in scored.by_category.items()
+            if round(points, 2) != 0
+        }
+        if not is_defense:
+            row["draftkings_bonus_chances"] = {
+                field.removesuffix("_bonus_chance"): chance
+                for field, chance in vars(stats).items()
+                if field.endswith("_bonus_chance") and chance
+            }
     return row
 
 
@@ -290,6 +320,21 @@ For start/sit comparisons:
   source's projected points, then give a clear recommendation. Call
   differences under about one point a toss-up, comparing like for like. If
   the sources disagree on who's ahead, say so.
+
+Explaining a projection:
+- When asked why a player is projected for a number, or where the points
+  come from, look the player up by name in Razzball and use its
+  draftkings_breakdown. List the biggest categories with their points.
+- Explain a bonus as a chance: e.g. a 31% chance of 300+ passing yards is
+  worth 0.93 points. Never say the player is projected to reach the bonus.
+- If the breakdown comes out a little below Razzball's DraftKings points,
+  say the rest comes from stats Razzball doesn't list separately, such as
+  2-point conversions and return TDs.
+- For a team defense, the breakdown adds up to the rules-based number, not
+  Razzball's; give the note about Razzball's defense numbers.
+- RotoWire publishes only a total, so its projections can't be broken down;
+  say so if asked.
+- For a scoring format other than DraftKings, the breakdown doesn't apply.
 
 Salaries:
 - Use the salaries tool for DraftKings salary questions, and say the

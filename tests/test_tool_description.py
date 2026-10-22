@@ -89,3 +89,10 @@ def test_position_ignores_case(call_projections_tool):
 def test_player_name_says_defenses_are_named_by_team_abbreviation():
     assert '"HOU Defense"' in described("player_name")
     assert "abbreviation" in described("player_name")
+
+
+def test_description_explains_the_breakdown():
+    description = fetch_razzball_projections.description
+    assert "draftkings_breakdown" in description
+    assert "When player_name is given" in description
+    assert "chance times 3 points" in description

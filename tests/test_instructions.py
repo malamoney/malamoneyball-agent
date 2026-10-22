@@ -53,3 +53,21 @@ def test_defenses_show_razzballs_number_and_the_rules_based_one():
     assert "draftkings_points_by_rules side by side" in TEXT
     assert "about 4 points above DraftKings' rules" in TEXT
     assert "like-for-like comparison with RotoWire's" in TEXT
+
+
+def test_explaining_a_projection_uses_the_breakdown():
+    assert "draftkings_breakdown" in TEXT
+    assert "List the biggest categories" in TEXT
+
+
+def test_a_bonus_is_explained_as_a_chance():
+    assert "Explain a bonus as a chance" in TEXT
+    assert "Never say the player is projected to reach the bonus" in TEXT
+
+
+def test_a_small_remainder_is_explained():
+    assert "stats Razzball doesn't list separately" in TEXT
+
+
+def test_rotowire_projections_cant_be_broken_down():
+    assert "RotoWire publishes only a total" in TEXT
