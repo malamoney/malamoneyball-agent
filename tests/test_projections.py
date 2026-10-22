@@ -32,6 +32,7 @@ def test_tool_returns_valid_players_from_sample_response(call_projections_tool):
         "ppr_points": 14.25,
         "draftkings_points": 15.25,
         "fanduel_points": 13.25,
+        "rotowire_id": "1",
     }
 
 

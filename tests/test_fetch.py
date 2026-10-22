@@ -1,3 +1,4 @@
+import pytest
 import requests
 
 from malamoneyball_agent import razzball
@@ -110,3 +111,18 @@ def test_failed_downloads_are_not_cached(call_projections_tool):
 
     assert call_projections_tool.requests_made == 2
     assert len(output) == 2
+
+
+@pytest.mark.parametrize(
+    ("sent", "returned"), [("12345", "12345"), ("0", None), (None, None)]
+)
+def test_rotowire_id_is_passed_on_only_when_razzball_has_one(
+    call_projections_tool, sent, returned
+):
+    row = {**WEEK_3["projections"][0], "rotowireid": sent}
+
+    output = call_projections_tool(
+        {"season": "2026", "week": "3"}, {"projections": [row]}
+    )
+
+    assert output.output[0]["rotowire_id"] == returned
