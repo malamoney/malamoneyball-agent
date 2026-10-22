@@ -1,2 +1,7 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+
+/* Native controls and scrollbars follow the system's light or dark setting too. */
+:root {
+  color-scheme: light dark;
+}

@@ -109,7 +109,9 @@ fresh. Use ✎ to rename a conversation and × to delete one; deleting asks firs
 and can't be undone. Renames and deletions show up in the terminal's `--list`
 too. Answers stream in as they're written, and "Looking up…" shows while projections are fetched. If an
 answer fails, a short reason shows in its place with a Retry button; the full
-error is printed in the terminal running the server. The server
+error is printed in the terminal running the server. The page follows your
+system's light or dark setting, and on a narrow screen such as a phone the
+sidebar opens from the ☰ button in the header. The server
 only listens on this machine (127.0.0.1), so nobody else on your network can
 reach it.
 

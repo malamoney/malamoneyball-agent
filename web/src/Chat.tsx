@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import type { AssistantApi, ConversationSummary, Message } from "./api";
+import { useWideScreen } from "./screen";
 import { Sidebar } from "./Sidebar";
 
 /** The Answer being written: its text so far, and how many lookups are running. */
@@ -28,6 +29,10 @@ export function Chat({ api }: { api: AssistantApi }) {
   const latestOpening = useRef(0);
   // Stops the Answer being written.
   const stopper = useRef<AbortController | null>(null);
+  // On a narrow screen the sidebar is a drawer, opened from the header.
+  const wide = useWideScreen();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const drawerToggle = useRef<HTMLButtonElement>(null);
   const busy = streaming !== null;
   const openConversation = conversations.find((c) => c.id === openId) ?? null;
 
@@ -169,25 +174,64 @@ export function Chat({ api }: { api: AssistantApi }) {
     }
   }
 
+  function closeDrawer() {
+    setDrawerOpen(false);
+    drawerToggle.current?.focus();
+  }
+
+  const sidebar = (
+    <Sidebar
+      conversations={conversations}
+      openId={openId}
+      busy={busy}
+      onOpen={(conversationId) => {
+        setDrawerOpen(false);
+        if (conversationId !== openId) void open(conversationId);
+      }}
+      onNew={() => {
+        setDrawerOpen(false);
+        startNew();
+      }}
+      onRename={(conversationId, title) => void rename(conversationId, title)}
+      onDelete={(conversationId) => void remove(conversationId)}
+    />
+  );
+
   return (
-    <div className="flex h-dvh bg-stone-50 text-stone-900">
-      <Sidebar
-        conversations={conversations}
-        openId={openId}
-        busy={busy}
-        onOpen={(conversationId) => {
-          if (conversationId !== openId) void open(conversationId);
-        }}
-        onNew={startNew}
-        onRename={(conversationId, title) => void rename(conversationId, title)}
-        onDelete={(conversationId) => void remove(conversationId)}
-      />
+    <div className="flex h-dvh bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
+      {wide && sidebar}
+      {!wide && drawerOpen && (
+        <div
+          id="drawer"
+          className="fixed inset-0 z-20 flex"
+          onKeyDown={(event) => {
+            // Escape in the rename field or the delete dialog only closes those.
+            if (event.key === "Escape" && !event.defaultPrevented) closeDrawer();
+          }}
+        >
+          {sidebar}
+          <div className="flex-1 bg-stone-900/40 dark:bg-black/60" onClick={closeDrawer} />
+        </div>
+      )}
       <div className="flex min-w-0 flex-1 flex-col">
-      <header className="border-b border-stone-200 bg-white px-4 py-3">
+      <header className="border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 py-3">
         <div className="mx-auto flex max-w-2xl items-baseline gap-3">
+          {!wide && (
+            <button
+              type="button"
+              ref={drawerToggle}
+              aria-label="Conversations"
+              aria-expanded={drawerOpen}
+              aria-controls="drawer"
+              onClick={() => setDrawerOpen((current) => !current)}
+              className="-my-1 self-center rounded-md px-2 py-1 hover:bg-stone-100 dark:hover:bg-stone-800"
+            >
+              <span aria-hidden="true">☰</span>
+            </button>
+          )}
           <h1 className="shrink-0 font-semibold tracking-tight">Malamoneyball</h1>
           {openConversation && (
-            <p className="truncate text-sm text-stone-500">{openConversation.title}</p>
+            <p className="truncate text-sm text-stone-500 dark:text-stone-400">{openConversation.title}</p>
           )}
         </div>
       </header>
@@ -195,7 +239,7 @@ export function Chat({ api }: { api: AssistantApi }) {
       <main className="flex-1 overflow-y-auto px-4">
         <ol aria-label="Conversation" className="mx-auto max-w-2xl space-y-6 py-6">
           {!loading && messages.length === 0 && !busy && !error && (
-            <li className="text-stone-500">
+            <li className="text-stone-500 dark:text-stone-400">
               Ask about this week's projections, like "Should I start Josh Allen or Lamar
               Jackson?"
             </li>
@@ -225,14 +269,14 @@ export function Chat({ api }: { api: AssistantApi }) {
             <li aria-busy="true">
               {streaming.text && <Answer text={streaming.text} />}
               {streaming.lookupsRunning > 0 && (
-                <p role="status" className="mt-2 text-sm text-stone-500 italic">
+                <p role="status" className="mt-2 text-sm text-stone-500 dark:text-stone-400 italic">
                   Looking up…
                 </p>
               )}
             </li>
           )}
           {error && (
-            <li role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">
+            <li role="alert" className="rounded-md bg-red-50 dark:bg-red-950 px-3 py-2 text-sm text-red-800 dark:text-red-200">
               {error}
             </li>
           )}
@@ -240,7 +284,7 @@ export function Chat({ api }: { api: AssistantApi }) {
         <div ref={end} />
       </main>
 
-      <form onSubmit={submit} className="border-t border-stone-200 bg-white px-4 py-3">
+      <form onSubmit={submit} className="border-t border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 py-3">
         <div className="mx-auto flex max-w-2xl items-end gap-2">
           <label htmlFor="question" className="sr-only">
             Question
@@ -253,13 +297,13 @@ export function Chat({ api }: { api: AssistantApi }) {
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={sendOnEnter}
             placeholder="Ask about lineups or projections"
-            className="max-h-40 min-h-10 flex-1 resize-none rounded-md border border-stone-300 bg-white px-3 py-2 focus:border-emerald-700 focus:outline-none"
+            className="max-h-40 min-h-10 flex-1 resize-none rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 focus:border-emerald-700 dark:focus:border-emerald-500 focus:outline-none"
           />
           {busy ? (
             <button
               type="button"
               onClick={stopAnswer}
-              className="h-10 rounded-md border border-stone-300 bg-white px-4 font-medium text-stone-800 hover:bg-stone-100"
+              className="h-10 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-4 font-medium text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800"
             >
               Stop
             </button>
@@ -267,7 +311,7 @@ export function Chat({ api }: { api: AssistantApi }) {
             <button
               type="submit"
               disabled={!draft.trim()}
-              className="h-10 rounded-md bg-emerald-800 px-4 font-medium text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:bg-stone-300"
+              className="h-10 rounded-md bg-emerald-800 px-4 font-medium text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:bg-stone-300 dark:disabled:bg-stone-700"
             >
               Send
             </button>
@@ -281,7 +325,7 @@ export function Chat({ api }: { api: AssistantApi }) {
 
 function Question({ text }: { text: string }) {
   return (
-    <p className="ml-auto w-fit max-w-[85%] rounded-lg bg-stone-200 px-3 py-2 whitespace-pre-wrap">
+    <p className="ml-auto w-fit max-w-[85%] rounded-lg bg-stone-200 dark:bg-stone-800 px-3 py-2 break-words whitespace-pre-wrap">
       {text}
     </p>
   );
@@ -289,7 +333,8 @@ function Question({ text }: { text: string }) {
 
 function Answer({ text }: { text: string }) {
   return (
-    <div className="prose prose-stone max-w-none">
+    // A wide table scrolls inside the Answer rather than widening the page.
+    <div className="prose prose-stone dark:prose-invert max-w-none break-words [&_table]:block [&_table]:overflow-x-auto">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
     </div>
   );
@@ -299,7 +344,7 @@ function StoppedAnswer({ text }: { text: string }) {
   return (
     <div>
       {text && <Answer text={text} />}
-      <p className="mt-2 text-sm text-stone-500 italic">
+      <p className="mt-2 text-sm text-stone-500 dark:text-stone-400 italic">
         Stopped — this question and answer won't be saved.
       </p>
     </div>
@@ -310,14 +355,14 @@ function FailedAnswer({ reason, onRetry }: { reason: string; onRetry?: () => voi
   return (
     <div
       role="alert"
-      className="flex items-center gap-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800"
+      className="flex items-center gap-3 rounded-md bg-red-50 dark:bg-red-950 px-3 py-2 text-sm text-red-800 dark:text-red-200"
     >
       <p className="flex-1">{reason}</p>
       {onRetry && (
         <button
           type="button"
           onClick={onRetry}
-          className="shrink-0 rounded-md border border-red-300 bg-white px-3 py-1 font-medium text-red-800 hover:bg-red-100"
+          className="shrink-0 rounded-md border border-red-300 dark:border-red-800 bg-white dark:bg-stone-900 px-3 py-1 font-medium text-red-800 dark:text-red-200 hover:bg-red-100 dark:hover:bg-red-900"
         >
           Retry
         </button>
