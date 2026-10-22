@@ -71,3 +71,23 @@ def test_a_small_remainder_is_explained():
 
 def test_rotowire_projections_cant_be_broken_down():
     assert "RotoWire publishes only a total" in TEXT
+
+
+def test_lineups_follow_draftkings_classic_rules():
+    assert "1 QB, 2 RB, 3 WR, 1 TE, 1 FLEX" in TEXT
+    assert "at most $50,000 in salary" in TEXT
+    assert "at least 2 NFL games" in TEXT
+
+
+def test_proposed_lineups_are_checked_first():
+    assert "Check any complete lineup you propose with it" in TEXT
+    assert "never present an illegal lineup as legal" in TEXT
+
+
+def test_lineup_answers_give_the_salary_and_open_slots():
+    assert "total salary and the salary left" in TEXT
+    assert "salary left per open slot" in TEXT
+
+
+def test_ambiguous_names_are_asked_about():
+    assert "If a name is ambiguous, ask which player is meant" in TEXT
