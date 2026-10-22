@@ -2,18 +2,22 @@
 
 A fantasy football assistant that runs in your terminal or a web page on your
 own machine. Ask it lineup questions in plain English and it answers from
-[Razzball](https://razzball.com)'s weekly NFL projections, or
-[RotoWire](https://www.rotowire.com)'s when you ask for them:
+[Razzball](https://razzball.com)'s and [RotoWire](https://www.rotowire.com)'s
+weekly NFL projections, side by side (or just one, if you name it):
 
 ```
-You: Should I start Jaxon Smith-Njigba or Christian Watson this week?
+You: Should I start Jahmyr Gibbs or Bijan Robinson?
 
-Agent: Start Christian Watson. He's projected for 18.4 PPR points vs. Atlanta,
-compared with Jaxon Smith-Njigba at 15.9 vs. Washington.
+Agent: Start Jahmyr Gibbs. Both sources favor him over Bijan Robinson.
+
+| Player         | Position, opponent | Razzball PPR | Razzball DK | RotoWire DK |
+|----------------|--------------------|-------------:|------------:|------------:|
+| Jahmyr Gibbs   | RB vs. GB          |         28.5 |        30.6 |       25.34 |
+| Bijan Robinson | RB vs. SF          |         22.6 |        24.1 |       22.72 |
 ```
 
 It's built on the [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/):
-the model decides when to look up projections, and a Python tool fetches them.
+the model decides when to look up projections, and Python tools fetch them.
 
 ## What you need
 
@@ -75,7 +79,9 @@ Things you can ask:
 Good to know:
 
 - **Scoring:** answers use PPR unless you ask for another format (standard,
-  half-PPR, DraftKings or FanDuel).
+  half-PPR, DraftKings or FanDuel). RotoWire only projects DraftKings points,
+  so answers compare it with Razzball's DraftKings points and label which
+  scoring each number uses.
 - **"This week":** follows the NFL calendar. Weeks run Tuesday to Monday,
   starting the week of the Thursday after Labor Day. Outside the regular
   season, name a week explicitly.

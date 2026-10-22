@@ -1,4 +1,4 @@
-"""The Assistant: its projections tool, instructions and model choice."""
+"""The Assistant: its tools, instructions and model choice."""
 
 import os
 
@@ -26,10 +26,13 @@ def fetch_razzball_projections(
 ) -> list[dict]:
     """Fetch Razzball's weekly fantasy-football projections for NFL players.
 
-    Each player comes back with name, position, team, opponent, and projected
-    points for standard, half-PPR, PPR, DraftKings and FanDuel scoring. Results
-    are sorted by projected PPR points, highest first. Returns an empty list
-    when no week is given and the NFL regular season isn't under way.
+    Each player comes back with name, position, team, opponent, projected
+    points for standard, half-PPR, PPR, DraftKings and FanDuel scoring, and
+    rotowire_id, the same player's id in RotoWire's projections (null for team
+    defenses, which match by team). Results are sorted by projected PPR
+    points, highest first. Returns an empty list when no week is given and the
+    NFL regular season isn't under way. A player missing from a week usually
+    has a bye or isn't expected to play.
 
     Args:
         season: Season year, e.g. "2026". Use "" for the current season.
@@ -82,9 +85,16 @@ def fetch_razzball_projections(
             "ppr_points": player.ppr_pts,
             "draftkings_points": player.dk_pts,
             "fanduel_points": player.fd_pts,
+            "rotowire_id": _rotowire_id(player.rotowireid),
         }
         for player in projections[: min(limit, 100)]
     ]
+
+
+def _rotowire_id(value: str | None) -> str | None:
+    # Razzball sends "0" or nothing for players RotoWire doesn't list, and
+    # for every team defense.
+    return value if value and value != "0" else None
 
 
 @function_tool
@@ -105,7 +115,9 @@ def fetch_rotowire_projections(
     Returns the slate's name and start time, and its players sorted by
     projected DraftKings points, highest first. Each has name, position, team,
     opponent, home or away, kickoff time (US Eastern), injury status (e.g.
-    QUE for questionable, OUT, IR; null when healthy) and projected points.
+    QUE for questionable, OUT, IR; null when healthy), projected points and
+    rotowire_id, which matches the same player's rotowire_id in Razzball's
+    projections (team defenses match by team instead).
 
     Args:
         position: Only return players at this position (case-insensitive): QB,
@@ -137,6 +149,7 @@ def fetch_rotowire_projections(
                 "kickoff": player.game.dateTime,
                 "injury_status": player.injuryStatus,
                 "draftkings_points": player.pts,
+                "rotowire_id": str(player.rwID),
             }
             for player in players[: min(limit, 100)]
         ],
@@ -220,25 +233,50 @@ def _filter_main_slate(
 
 INSTRUCTIONS = """\
 You are a fantasy football assistant, used from a terminal or a web page. You
-help with lineup decisions using Razzball's weekly NFL projections.
+help with lineup decisions using weekly NFL projections from Razzball and
+RotoWire, and DraftKings salaries.
 
-- Use a projections tool for any question about projected points. Never
-  guess numbers. Razzball covers every format and week; use RotoWire when
-  the user asks for it. RotoWire only has DraftKings points for this week's
-  main slate, so label its numbers as DraftKings points.
+Projections:
+- Use the projection tools for any question about projected points. Never
+  guess numbers.
+- Unless the user names a source, look up both Razzball and RotoWire and show
+  them side by side. If the user names one ("What does Razzball say",
+  "RotoWire only"), use only that one.
+- Assume PPR scoring unless the user names another format (standard,
+  half-PPR, DraftKings or FanDuel).
+- Label every number with its source and scoring. RotoWire only projects
+  DraftKings points: never present them as PPR or any other format. For a
+  question in another format, show Razzball's points in that format, then
+  Razzball's DraftKings points next to RotoWire's as the like-for-like
+  comparison. Whenever RotoWire's number appears, so does Razzball's
+  DraftKings number.
+- Match a player across the two sources by rotowire_id, and team defenses by
+  team.
+- RotoWire only covers this week's DraftKings main slate. If a player has a
+  Razzball projection but isn't in RotoWire's, they're playing outside the
+  main slate (Thursday, international, Sunday night or Monday): show Razzball's
+  projection and say RotoWire doesn't cover them this week.
+- RotoWire only has the current week. For any other week, use Razzball alone
+  and say why.
+- If one source returns an error, answer from the other and mention the
+  problem in one short sentence.
+- If neither source has a well-known player, their team is probably on a bye
+  or they aren't expected to play; say so before suggesting a spelling check.
+  In RotoWire projections or DraftKings salaries alone, a missing player is
+  most likely not on this week's main slate.
+
+For start/sit comparisons:
+- Look up every player involved, list each with position, opponent and each
+  source's projected points, then give a clear recommendation. Call
+  differences under about one point a toss-up, comparing like for like. If
+  the sources disagree on who's ahead, say so.
+
+Salaries:
 - Use the salaries tool for DraftKings salary questions, and say the
   salaries are for this week's main slate. For value, compare salary with
-  projected DraftKings points (RotoWire's, or Razzball's draftkings_points),
-  e.g. points per $1,000.
-- Assume PPR scoring unless the user names another format (standard,
-  half-PPR, DraftKings or FanDuel); then use that format's points.
-- For start/sit comparisons, look up every player involved, list each with
-  position, opponent and projected points, then give a clear recommendation.
-  Call differences under about one point a toss-up.
-- If a player can't be found, say so and suggest checking the spelling. In
-  RotoWire projections or DraftKings salaries, a player who's missing is
-  most likely not on this week's main slate, so say that first.
-- Keep answers short.
+  projected DraftKings points from either source, e.g. points per $1,000.
+
+Keep answers short. A small table works well for side-by-side numbers.
 """
 
 
