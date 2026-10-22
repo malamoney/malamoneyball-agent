@@ -1,0 +1,743 @@
+[
+  {
+    "slateID": 14056,
+    "rwID": 16808,
+    "firstName": "Jahmyr",
+    "lastName": "Gibbs",
+    "rotoPos": "RB",
+    "pos": [
+      "RB",
+      "FLEX"
+    ],
+    "injuryStatus": null,
+    "isHome": true,
+    "isTeamDefense": false,
+    "link": "/football/player/jahmyr-gibbs-16808",
+    "teamLink": "/football/team/detroit-lions-det",
+    "imageURL": "https://assets.rotowire.com/images/headshots/nfl/imagn-176977.jpg?v=20261021",
+    "team": {
+      "abbr": "DET",
+      "city": "Detroit",
+      "nickname": "Lions"
+    },
+    "game": {
+      "dateTime": "2026-10-25 16:25:00",
+      "isDome": true
+    },
+    "salary": 9800,
+    "pts": "25.34",
+    "rostership": 35.4,
+    "tier": false,
+    "tierSummary": null,
+    "opponent": {
+      "team": "GB"
+    },
+    "odds": {
+      "moneyline": "-175",
+      "overUnder": "53.5",
+      "spread": "-3.0",
+      "impliedPts": 28.25,
+      "impliedWinProb": 61
+    },
+    "weather": {
+      "wind": {
+        "windSpeed": "",
+        "windDirection": "N"
+      },
+      "precip": {
+        "precipProb": 0,
+        "precipType": "rain"
+      },
+      "temp": {
+        "temp": ""
+      }
+    },
+    "stats": {
+      "season": {
+        "gp": "5",
+        "passerRating": null,
+        "passAtt": "0.0",
+        "passComp": "0.0",
+        "passCompPct": "0.0",
+        "passYds": "0.0",
+        "passYpa": "0.0",
+        "passTD": "0.0",
+        "passInt": "0.0",
+        "rushAtt": "21.0",
+        "rushYds": "100.8",
+        "rushYpc": "4.8",
+        "rushTD": "1.4",
+        "rec": "5.4",
+        "recYds": "48.6",
+        "recYpc": "9.0",
+        "recTargets": "6.8",
+        "recYpt": "7.1",
+        "recCatchPct": "79.4",
+        "recTD": "0.4"
+      },
+      "last8": {
+        "gp": "5",
+        "passerRating": null,
+        "passAtt": "0.0",
+        "passComp": "0.0",
+        "passCompPct": "0.0",
+        "passYds": "0.0",
+        "passYpa": "0.0",
+        "passTD": "0.0",
+        "passInt": "0.0",
+        "rushAtt": "21.0",
+        "rushYds": "100.8",
+        "rushYpc": "4.8",
+        "rushTD": "1.4",
+        "rec": "5.4",
+        "recYds": "48.6",
+        "recYpc": "9.0",
+        "recTargets": "6.8",
+        "recYpt": "7.1",
+        "recCatchPct": "79.4",
+        "recTD": "0.4"
+      },
+      "avgFpts": {
+        "last2": "40.7",
+        "last4": "34.3",
+        "last8": "32.1",
+        "last10": "32.1",
+        "season": "32.1"
+      },
+      "playerProps": {
+        "td1": "-320",
+        "td2": null,
+        "td3": null,
+        "passYds": null,
+        "rushYds": "94.5",
+        "recYds": "37.5",
+        "rec": "4.5"
+      },
+      "passRate": {
+        "passRate": null,
+        "xPassRate": null,
+        "PROE": null,
+        "oppPassRate": null,
+        "oppXPassRate": null,
+        "oppPROE": null
+      }
+    }
+  },
+  {
+    "slateID": 13275,
+    "rwID": 16790,
+    "firstName": "Puka",
+    "lastName": "Nacua",
+    "rotoPos": "WR",
+    "pos": [
+      "WR",
+      "FLEX"
+    ],
+    "injuryStatus": null,
+    "isHome": false,
+    "isTeamDefense": false,
+    "link": "/football/player/puka-nacua-16790",
+    "teamLink": "/football/team/los-angeles-rams-lar",
+    "imageURL": "https://assets.rotowire.com/images/headshots/nfl/imagn-141029.jpg?v=20261021",
+    "team": {
+      "abbr": "LAR",
+      "city": "Los Angeles",
+      "nickname": "Rams"
+    },
+    "game": {
+      "dateTime": "2026-10-25 16:25:00",
+      "isDome": true
+    },
+    "salary": 8400,
+    "pts": "25.32",
+    "rostership": 34.6,
+    "tier": false,
+    "tierSummary": null,
+    "opponent": {
+      "team": "LV"
+    },
+    "odds": {
+      "moneyline": "-213",
+      "overUnder": "48.5",
+      "spread": "-4.0",
+      "impliedPts": 26.25,
+      "impliedWinProb": 65.3
+    },
+    "weather": {
+      "wind": {
+        "windSpeed": "",
+        "windDirection": "N"
+      },
+      "precip": {
+        "precipProb": 0,
+        "precipType": "rain"
+      },
+      "temp": {
+        "temp": ""
+      }
+    },
+    "stats": {
+      "season": {
+        "gp": "4",
+        "passerRating": null,
+        "passAtt": "0.0",
+        "passComp": "0.0",
+        "passCompPct": "0.0",
+        "passYds": "0.0",
+        "passYpa": "0.0",
+        "passTD": "0.0",
+        "passInt": "0.0",
+        "rushAtt": "0.8",
+        "rushYds": "2.8",
+        "rushYpc": "3.7",
+        "rushTD": "0.3",
+        "rec": "9.3",
+        "recYds": "104.3",
+        "recYpc": "11.3",
+        "recTargets": "13.0",
+        "recYpt": "8.0",
+        "recCatchPct": "71.2",
+        "recTD": "0.3"
+      },
+      "last8": {
+        "gp": "4",
+        "passerRating": null,
+        "passAtt": "0.0",
+        "passComp": "0.0",
+        "passCompPct": "0.0",
+        "passYds": "0.0",
+        "passYpa": "0.0",
+        "passTD": "0.0",
+        "passInt": "0.0",
+        "rushAtt": "0.8",
+        "rushYds": "2.8",
+        "rushYpc": "3.7",
+        "rushTD": "0.3",
+        "rec": "9.3",
+        "recYds": "104.3",
+        "recYpc": "11.3",
+        "recTargets": "13.0",
+        "recYpt": "8.0",
+        "recCatchPct": "71.2",
+        "recTD": "0.3"
+      },
+      "avgFpts": {
+        "last2": "27.4",
+        "last4": "27.5",
+        "last8": "23.7",
+        "last10": "23.7",
+        "season": "23.7"
+      },
+      "playerProps": {
+        "td1": "-130",
+        "td2": null,
+        "td3": null,
+        "passYds": null,
+        "rushYds": null,
+        "recYds": "97.5",
+        "rec": "7.5"
+      },
+      "passRate": {
+        "passRate": "66.4",
+        "xPassRate": "63.3",
+        "PROE": "3.1",
+        "oppPassRate": "62.2",
+        "oppXPassRate": "62.8",
+        "oppPROE": "-0.6"
+      }
+    }
+  },
+  {
+    "slateID": 5071,
+    "rwID": 12561,
+    "firstName": "Lamar",
+    "lastName": "Jackson",
+    "rotoPos": "QB",
+    "pos": [
+      "QB"
+    ],
+    "injuryStatus": "QUE",
+    "isHome": true,
+    "isTeamDefense": false,
+    "link": "/football/player/lamar-jackson-12561",
+    "teamLink": "/football/team/baltimore-ravens-bal",
+    "imageURL": "https://assets.rotowire.com/images/headshots/nfl/imagn-91409.jpg?v=20261021",
+    "team": {
+      "abbr": "BAL",
+      "city": "Baltimore",
+      "nickname": "Ravens"
+    },
+    "game": {
+      "dateTime": "2026-10-25 13:00:00",
+      "isDome": false
+    },
+    "salary": 6700,
+    "pts": "21.05",
+    "rostership": 14.7,
+    "tier": false,
+    "tierSummary": null,
+    "opponent": {
+      "team": "CIN"
+    },
+    "odds": {
+      "moneyline": "100",
+      "overUnder": "48.5",
+      "spread": "0.5",
+      "impliedPts": 24,
+      "impliedWinProb": 48.5
+    },
+    "weather": {
+      "wind": {
+        "windSpeed": "3.3",
+        "windDirection": "SSE"
+      },
+      "precip": {
+        "precipProb": 0,
+        "precipType": "rain"
+      },
+      "temp": {
+        "temp": "60.6"
+      }
+    },
+    "stats": {
+      "season": {
+        "gp": "4",
+        "passerRating": "119.6",
+        "passAtt": "24.0",
+        "passComp": "17.0",
+        "passCompPct": "70.8",
+        "passYds": "241.8",
+        "passYpa": "10.1",
+        "passTD": "1.5",
+        "passInt": "0.3",
+        "rushAtt": "4.8",
+        "rushYds": "36.0",
+        "rushYpc": "7.6",
+        "rushTD": "0.3",
+        "rec": "0.0",
+        "recYds": "0.0",
+        "recYpc": "0.0",
+        "recTargets": "0.0",
+        "recYpt": "0.0",
+        "recCatchPct": "0.0",
+        "recTD": "0.0"
+      },
+      "last8": {
+        "gp": "4",
+        "passerRating": "119.6",
+        "passAtt": "24.0",
+        "passComp": "17.0",
+        "passCompPct": "70.8",
+        "passYds": "241.8",
+        "passYpa": "10.1",
+        "passTD": "1.5",
+        "passInt": "0.3",
+        "rushAtt": "4.8",
+        "rushYds": "36.0",
+        "rushYpc": "7.6",
+        "rushTD": "0.3",
+        "rec": "0.0",
+        "recYds": "0.0",
+        "recYpc": "0.0",
+        "recTargets": "0.0",
+        "recYpt": "0.0",
+        "recCatchPct": "0.0",
+        "recTD": "0.0"
+      },
+      "avgFpts": {
+        "last2": "0.0",
+        "last4": "21.2",
+        "last8": "21.8",
+        "last10": "21.8",
+        "season": "21.8"
+      },
+      "playerProps": {
+        "td1": null,
+        "td2": null,
+        "td3": null,
+        "passYds": null,
+        "rushYds": null,
+        "recYds": null,
+        "rec": null
+      },
+      "passRate": {
+        "passRate": "55.7",
+        "xPassRate": "58.3",
+        "PROE": "-2.6",
+        "oppPassRate": "66.2",
+        "oppXPassRate": "60.3",
+        "oppPROE": "6.0"
+      }
+    }
+  },
+  {
+    "slateID": 9600,
+    "rwID": 15834,
+    "firstName": "Brock",
+    "lastName": "Purdy",
+    "rotoPos": "QB",
+    "pos": [
+      "QB"
+    ],
+    "injuryStatus": null,
+    "isHome": false,
+    "isTeamDefense": false,
+    "link": "/football/player/brock-purdy-15834",
+    "teamLink": "/football/team/san-francisco-49ers-sf",
+    "imageURL": "https://assets.rotowire.com/images/headshots/nfl/imagn-134638.jpg?v=20261021",
+    "team": {
+      "abbr": "SF",
+      "city": "San Francisco",
+      "nickname": "49ers"
+    },
+    "game": {
+      "dateTime": "2026-10-25 13:00:00",
+      "isDome": false
+    },
+    "salary": 6600,
+    "pts": "20.70",
+    "rostership": 9.5,
+    "tier": false,
+    "tierSummary": null,
+    "opponent": {
+      "team": "ATL"
+    },
+    "odds": {
+      "moneyline": "-157",
+      "overUnder": "49.5",
+      "spread": "-3.0",
+      "impliedPts": 26.25,
+      "impliedWinProb": 58.5
+    },
+    "weather": {
+      "wind": {
+        "windSpeed": "",
+        "windDirection": "N"
+      },
+      "precip": {
+        "precipProb": 0,
+        "precipType": "rain"
+      },
+      "temp": {
+        "temp": ""
+      }
+    },
+    "stats": {
+      "season": {
+        "gp": "6",
+        "passerRating": "118.1",
+        "passAtt": "28.5",
+        "passComp": "19.8",
+        "passCompPct": "69.6",
+        "passYds": "243.3",
+        "passYpa": "8.5",
+        "passTD": "2.3",
+        "passInt": "0.3",
+        "rushAtt": "5.0",
+        "rushYds": "26.0",
+        "rushYpc": "5.2",
+        "rushTD": "0.2",
+        "rec": "0.0",
+        "recYds": "0.0",
+        "recYpc": "0.0",
+        "recTargets": "0.0",
+        "recYpt": "0.0",
+        "recCatchPct": "0.0",
+        "recTD": "0.0"
+      },
+      "last8": {
+        "gp": "6",
+        "passerRating": "118.1",
+        "passAtt": "28.5",
+        "passComp": "19.8",
+        "passCompPct": "69.6",
+        "passYds": "243.3",
+        "passYpa": "8.5",
+        "passTD": "2.3",
+        "passInt": "0.3",
+        "rushAtt": "5.0",
+        "rushYds": "26.0",
+        "rushYpc": "5.2",
+        "rushTD": "0.2",
+        "rec": "0.0",
+        "recYds": "0.0",
+        "recYpc": "0.0",
+        "recTargets": "0.0",
+        "recYpt": "0.0",
+        "recCatchPct": "0.0",
+        "recTD": "0.0"
+      },
+      "avgFpts": {
+        "last2": "18.8",
+        "last4": "22.1",
+        "last8": "23.7",
+        "last10": "23.7",
+        "season": "23.7"
+      },
+      "playerProps": {
+        "td1": "300",
+        "td2": null,
+        "td3": null,
+        "passYds": "242.5",
+        "rushYds": "18.5",
+        "recYds": null,
+        "rec": null
+      },
+      "passRate": {
+        "passRate": "57.0",
+        "xPassRate": "53.6",
+        "PROE": "3.3",
+        "oppPassRate": "53.7",
+        "oppXPassRate": "62.8",
+        "oppPROE": "-9.2"
+      }
+    }
+  },
+  {
+    "slateID": 14065,
+    "rwID": 17033,
+    "firstName": "Sam",
+    "lastName": "LaPorta",
+    "rotoPos": "TE",
+    "pos": [
+      "TE",
+      "FLEX"
+    ],
+    "injuryStatus": null,
+    "isHome": true,
+    "isTeamDefense": false,
+    "link": "/football/player/sam-laporta-17033",
+    "teamLink": "/football/team/detroit-lions-det",
+    "imageURL": "https://assets.rotowire.com/images/headshots/nfl/imagn-141624.jpg?v=20261021",
+    "team": {
+      "abbr": "DET",
+      "city": "Detroit",
+      "nickname": "Lions"
+    },
+    "game": {
+      "dateTime": "2026-10-25 16:25:00",
+      "isDome": true
+    },
+    "salary": 4800,
+    "pts": "12.92",
+    "rostership": 16.4,
+    "tier": false,
+    "tierSummary": null,
+    "opponent": {
+      "team": "GB"
+    },
+    "odds": {
+      "moneyline": "-175",
+      "overUnder": "53.5",
+      "spread": "-3.0",
+      "impliedPts": 28.25,
+      "impliedWinProb": 61
+    },
+    "weather": {
+      "wind": {
+        "windSpeed": "",
+        "windDirection": "N"
+      },
+      "precip": {
+        "precipProb": 0,
+        "precipType": "rain"
+      },
+      "temp": {
+        "temp": ""
+      }
+    },
+    "stats": {
+      "season": {
+        "gp": "5",
+        "passerRating": null,
+        "passAtt": "0.0",
+        "passComp": "0.0",
+        "passCompPct": "0.0",
+        "passYds": "0.0",
+        "passYpa": "0.0",
+        "passTD": "0.0",
+        "passInt": "0.0",
+        "rushAtt": "0.0",
+        "rushYds": "0.0",
+        "rushYpc": "0.0",
+        "rushTD": "0.0",
+        "rec": "5.4",
+        "recYds": "63.2",
+        "recYpc": "11.7",
+        "recTargets": "7.4",
+        "recYpt": "8.5",
+        "recCatchPct": "73.0",
+        "recTD": "0.6"
+      },
+      "last8": {
+        "gp": "5",
+        "passerRating": null,
+        "passAtt": "0.0",
+        "passComp": "0.0",
+        "passCompPct": "0.0",
+        "passYds": "0.0",
+        "passYpa": "0.0",
+        "passTD": "0.0",
+        "passInt": "0.0",
+        "rushAtt": "0.0",
+        "rushYds": "0.0",
+        "rushYpc": "0.0",
+        "rushTD": "0.0",
+        "rec": "5.4",
+        "recYds": "63.2",
+        "recYpc": "11.7",
+        "recTargets": "7.4",
+        "recYpt": "8.5",
+        "recCatchPct": "73.0",
+        "recTD": "0.6"
+      },
+      "avgFpts": {
+        "last2": "19.8",
+        "last4": "17.5",
+        "last8": "15.9",
+        "last10": "15.9",
+        "season": "15.9"
+      },
+      "playerProps": {
+        "td1": "165",
+        "td2": null,
+        "td3": null,
+        "passYds": null,
+        "rushYds": null,
+        "recYds": "51.5",
+        "rec": "4.5"
+      },
+      "passRate": {
+        "passRate": "62.7",
+        "xPassRate": "60.7",
+        "PROE": "2.1",
+        "oppPassRate": "67.8",
+        "oppXPassRate": "63.7",
+        "oppPROE": "4.1"
+      }
+    }
+  },
+  {
+    "slateID": 2752,
+    "rwID": 920012,
+    "firstName": "Houston",
+    "lastName": "Texans",
+    "rotoPos": "DST",
+    "pos": [
+      "DST"
+    ],
+    "injuryStatus": null,
+    "isHome": true,
+    "isTeamDefense": true,
+    "link": "/football/player/houston-texans-920012",
+    "teamLink": "/football/team/houston-texans-hou",
+    "imageURL": "https://assets.rotowire.com/images/headshots/nfl/imagn-.jpg?v=20261021",
+    "team": {
+      "abbr": "HOU",
+      "city": "Houston",
+      "nickname": "Texans"
+    },
+    "game": {
+      "dateTime": "2026-10-25 13:00:00",
+      "isDome": true
+    },
+    "salary": 3400,
+    "pts": "8.54",
+    "rostership": 7.6,
+    "tier": false,
+    "tierSummary": null,
+    "opponent": {
+      "team": "NYG"
+    },
+    "odds": {
+      "moneyline": "-517",
+      "overUnder": "43.0",
+      "spread": "-10.5",
+      "impliedPts": 26.75,
+      "impliedWinProb": 80.1
+    },
+    "weather": {
+      "wind": {
+        "windSpeed": "",
+        "windDirection": "N"
+      },
+      "precip": {
+        "precipProb": 0,
+        "precipType": "rain"
+      },
+      "temp": {
+        "temp": ""
+      }
+    },
+    "stats": {
+      "season": {
+        "gp": 0,
+        "passerRating": null,
+        "passAtt": null,
+        "passComp": null,
+        "passCompPct": null,
+        "passYds": null,
+        "passYpa": null,
+        "passTD": null,
+        "passInt": null,
+        "rushAtt": null,
+        "rushYds": null,
+        "rushYpc": null,
+        "rushTD": null,
+        "rec": null,
+        "recYds": null,
+        "recYpc": null,
+        "recTargets": null,
+        "recYpt": null,
+        "recCatchPct": null,
+        "recTD": null
+      },
+      "last8": {
+        "gp": 0,
+        "passerRating": null,
+        "passAtt": null,
+        "passComp": null,
+        "passCompPct": null,
+        "passYds": null,
+        "passYpa": null,
+        "passTD": null,
+        "passInt": null,
+        "rushAtt": null,
+        "rushYds": null,
+        "rushYpc": null,
+        "rushTD": null,
+        "rec": null,
+        "recYds": null,
+        "recYpc": null,
+        "recTargets": null,
+        "recYpt": null,
+        "recCatchPct": null,
+        "recTD": null
+      },
+      "avgFpts": {
+        "last2": "0.0",
+        "last4": "0.0",
+        "last8": "0.0",
+        "last10": "0.0",
+        "season": "0.0"
+      },
+      "playerProps": {
+        "td1": null,
+        "td2": null,
+        "td3": null,
+        "passYds": null,
+        "rushYds": null,
+        "recYds": null,
+        "rec": null
+      },
+      "passRate": {
+        "passRate": null,
+        "xPassRate": null,
+        "PROE": null,
+        "oppPassRate": null,
+        "oppXPassRate": null,
+        "oppPROE": null
+      }
+    }
+  }
+]

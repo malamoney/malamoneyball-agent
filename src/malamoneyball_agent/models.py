@@ -145,3 +145,62 @@ class NFLPlayerProjection(BaseModel):
     @classmethod
     def strip_fantrax_whitespace(cls, value: str | None) -> str | None:
         return value.strip() if value is not None else None
+
+
+class RotoWireSlate(BaseModel):
+    """One DraftKings slate in RotoWire's slate list; only what's needed to pick one."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    slateID: int
+    contestType: str
+    slateName: str
+    salaryCap: int
+    startDate: str
+    defaultSlate: bool
+
+
+class RotoWireTeam(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    abbr: str
+
+
+class RotoWireOpponent(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    team: str
+
+
+class RotoWireGame(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    dateTime: str
+
+
+class RotoWirePlayer(BaseModel):
+    """One player on a RotoWire DraftKings slate.
+
+    Only the fields the tools use are kept; RotoWire's stats, odds, weather
+    and the rest are ignored. `pts` is RotoWire's projection in DraftKings
+    points, sent as a string such as "25.34".
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    rwID: int
+    firstName: str
+    lastName: str
+    rotoPos: str
+    pos: list[str]
+    team: RotoWireTeam
+    opponent: RotoWireOpponent
+    isHome: bool
+    game: RotoWireGame
+    injuryStatus: str | None = None
+    pts: float
+    salary: int
+
+    @property
+    def name(self) -> str:
+        return f"{self.firstName} {self.lastName}"

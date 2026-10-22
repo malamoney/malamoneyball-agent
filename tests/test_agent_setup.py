@@ -7,7 +7,8 @@ from malamoneyball_agent import assistant, terminal
 
 def test_agent_only_has_fantasy_football_tools():
     assert [tool.name for tool in assistant.build_agent().tools] == [
-        "fetch_razzball_projections"
+        "fetch_razzball_projections",
+        "fetch_rotowire_projections",
     ]
 
 

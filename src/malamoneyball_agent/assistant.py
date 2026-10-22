@@ -6,6 +6,7 @@ from agents import Agent, function_tool
 
 from malamoneyball_agent.nfl_calendar import get_nfl_season, get_nfl_week
 from malamoneyball_agent.razzball import download_week
+from malamoneyball_agent.rotowire import download_main_slate
 
 # Used when OPENAI_MODEL isn't set.
 DEFAULT_MODEL = "gpt-6-luna"
@@ -85,14 +86,81 @@ def fetch_razzball_projections(
     ]
 
 
+@function_tool
+def fetch_rotowire_projections(
+    position: str = "",
+    player_name: str = "",
+    limit: int = 50,
+) -> dict:
+    """Fetch RotoWire's fantasy-football projections for this week's NFL main slate.
+
+    Three limits apply. RotoWire only projects DraftKings points, never
+    standard, half-PPR or PPR, so always call these DraftKings points. It only
+    covers the players on DraftKings' main slate, usually the Sunday afternoon
+    games; players in Thursday, international morning, Sunday night and
+    Monday games aren't on it, which means RotoWire doesn't cover them this
+    week, not that they don't exist. And it only has the current week.
+
+    Returns the slate's name and start time, and its players sorted by
+    projected DraftKings points, highest first. Each has name, position, team,
+    opponent, home or away, kickoff time (US Eastern), injury status (e.g.
+    QUE for questionable, OUT, IR; null when healthy) and projected points.
+
+    Args:
+        position: Only return players at this position (case-insensitive): QB,
+            RB, WR or TE, or DST (or DEF) for team defenses. Use "" for all
+            positions.
+        player_name: Only return players whose name contains this text, a
+            case-insensitive match on any part of the name, e.g. "gibbs".
+            Team defenses are named after their team, e.g. "Houston Texans".
+            Use "" for all players.
+        limit: Maximum number of players to return, at most 100.
+    """
+
+    main_slate = download_main_slate()
+    players = main_slate.players
+
+    if position:
+        wanted = "DST" if position.upper() == "DEF" else position.upper()
+        players = [player for player in players if player.rotoPos.upper() == wanted]
+
+    if player_name:
+        query = player_name.lower()
+        players = [player for player in players if query in player.name.lower()]
+
+    players = sorted(players, key=lambda player: player.pts, reverse=True)
+
+    return {
+        "slate": {
+            "name": main_slate.slate.slateName,
+            "starts_at": main_slate.slate.startDate,
+        },
+        "players": [
+            {
+                "name": player.name,
+                "position": player.rotoPos,
+                "team": player.team.abbr,
+                "opponent": player.opponent.team,
+                "home_or_away": "home" if player.isHome else "away",
+                "kickoff": player.game.dateTime,
+                "injury_status": player.injuryStatus,
+                "draftkings_points": player.pts,
+            }
+            for player in players[: min(limit, 100)]
+        ],
+    }
+
+
 # -------- the agent: system prompt + tools, the SDK runs the loop --------
 
 INSTRUCTIONS = """\
 You are a fantasy football assistant, used from a terminal or a web page. You
 help with lineup decisions using Razzball's weekly NFL projections.
 
-- Use the projections tool for any question about projected points. Never
-  guess numbers.
+- Use a projections tool for any question about projected points. Never
+  guess numbers. Razzball covers every format and week; use RotoWire when
+  the user asks for it. RotoWire only has DraftKings points for this week's
+  main slate, so label its numbers as DraftKings points.
 - Assume PPR scoring unless the user names another format (standard,
   half-PPR, DraftKings or FanDuel); then use that format's points.
 - For start/sit comparisons, look up every player involved, list each with
@@ -109,5 +177,5 @@ def build_agent() -> Agent:
         name="Fantasy football assistant",
         instructions=INSTRUCTIONS,
         model=os.getenv("OPENAI_MODEL") or DEFAULT_MODEL,
-        tools=[fetch_razzball_projections],
+        tools=[fetch_razzball_projections, fetch_rotowire_projections],
     )
