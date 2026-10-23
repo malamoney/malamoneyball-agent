@@ -3,7 +3,9 @@
 A fantasy football assistant that runs in your terminal or a web page on your
 own machine. Ask it lineup questions in plain English and it answers from
 [Razzball](https://razzball.com)'s and [RotoWire](https://www.rotowire.com)'s
-weekly NFL projections, side by side (or just one, if you name it):
+weekly NFL projections, side by side (or just one, if you name it), and
+knows how each defense has done against each position from
+[DraftEdge](https://draftedge.com/nfl/nfl-defense-vs-pos/):
 
 ```
 You: Should I start Jahmyr Gibbs or Bijan Robinson?
@@ -78,6 +80,8 @@ Things you can ask:
 - "Which running backs are good value under $6,000?"
 - "Is this DraftKings lineup legal: Lamar Jackson, Jahmyr Gibbs, …?"
 - "I have Gibbs and Nacua. How much can I spend per player on the rest?"
+- "Which defenses give up the most rushing yards to running backs?"
+- "How has the Chiefs' defense done against tight ends?"
 
 Good to know:
 
@@ -111,8 +115,14 @@ Good to know:
   Thursday, international, Sunday night or Monday games). They come from the
   data behind RotoWire's DraftKings optimizer page, which needs no key but
   isn't an official API, so it may change without notice.
+- **Defense vs position:** DraftEdge's points and stats allowed are per game
+  and blend this season with last season (about 50/50 after 4 games, mostly
+  this season by midseason), so answers call them blended. Its "this season"
+  points are this season alone. Rank 1 is the toughest defense to face, 32
+  the softest. It comes from DraftEdge's public Defense vs Position page,
+  which isn't an API, so it may change without notice.
 - **Speed:** each week's projections are downloaded once and reused for five
-  minutes.
+  minutes; DraftEdge's defense numbers are reused for an hour.
 
 ## The web page
 
@@ -184,6 +194,9 @@ The code lives in `src/malamoneyball_agent/`:
 - `conversations.py` saves conversations and their histories.
 - `razzball.py` downloads, caches and parses Razzball's projections, and
   `models.py` describes one projection row.
+- `rotowire.py` does the same for RotoWire's DraftKings main slate.
+- `draftedge.py` downloads, caches and reads DraftEdge's Defense vs Position
+  tables.
 - `draftkings_scoring.py` holds DraftKings' NFL Classic scoring rules and
   turns a stat line into DraftKings points.
 - `draftkings_lineup.py` holds DraftKings' NFL Classic lineup rules and

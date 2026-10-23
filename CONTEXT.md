@@ -47,3 +47,7 @@ _Avoid_: DK rules, scoring system (alone)
 **Lineup**:
 The 9 players a Manager enters in a DraftKings Classic contest: 1 QB, 2 RB, 3 WR, 1 TE, 1 FLEX (an RB, WR or TE) and 1 DST, costing no more than the $50,000 salary cap, from at least 2 NFL games. A Lineup with open slots is incomplete, not illegal.
 _Avoid_: Roster, team (for this meaning)
+
+**Defense vs Position**:
+How an NFL defense has done against one offensive position (QB, RB, WR or TE): the DraftKings points and stats per game that players at that position put up against it, from DraftEdge. Most of its numbers blend this season with last season; only the "this season" points are this season alone.
+_Avoid_: DvP, matchup (for the numbers themselves), defense rankings

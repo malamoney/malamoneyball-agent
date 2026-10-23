@@ -1,9 +1,11 @@
 """The Assistant: its tools, instructions and model choice."""
 
 import os
+from collections.abc import Callable
 
 from agents import Agent, function_tool
 
+from malamoneyball_agent.draftedge import STATS, DefenseRow, download_position
 from malamoneyball_agent.draftkings_lineup import (
     SALARY_CAP,
     LineupPlayer,
@@ -368,12 +370,110 @@ def _filter_main_slate(
     return players
 
 
+@function_tool
+def fetch_defense_vs_position(
+    position: str,
+    team: str = "",
+    sort_by: str = "draftkings_points",
+    limit: int = 32,
+) -> dict:
+    """Fetch how each NFL defense has done against one offensive position.
+
+    From DraftEdge's Defense vs Position tables, built from real box scores:
+    everything the players at that position did against each defense, per
+    game. Use it for matchups, e.g. which defenses give up the most rushing
+    yards to running backs, or how a player's opponent has done against his
+    position.
+
+    Most numbers are a blend of this season and last, not this season alone:
+    draftkings_points, fanduel_points and every stat in stats_per_game mix
+    this season's games with last season's, about 50/50 after 4 games and
+    mostly this season by midseason. Call them blended. For this season
+    alone use draftkings_points_this_season; draftkings_points_last_season
+    and draftkings_points_last_4_games are the other stretches. Every number
+    is per game.
+
+    Returns the position, the two seasons' names, and the defenses sorted by
+    sort_by, most allowed first. Each has rank, team (abbreviation), team
+    name, those points, vs_league_average (blended DraftKings points allowed
+    minus the league average; positive is a softer matchup), stats_per_game
+    and DraftEdge's trend (whether it's allowing more or less lately). Rank 1
+    allows the fewest DraftKings points, the toughest matchup; rank 32 allows
+    the most, the softest. Team defenses (DST) aren't a position here.
+
+    Args:
+        position: The offensive position: QB, RB, WR or TE.
+        team: Only return this defense, by abbreviation ("KC") or any part
+            of its name ("Chiefs", "Kansas City"). Use "" for all 32.
+        sort_by: What to sort by, most allowed first: draftkings_points
+            (blended), draftkings_points_this_season,
+            draftkings_points_last_4_games, or a stat. QB stats:
+            passing_yards, passing_touchdowns, interceptions, sacks,
+            rushing_yards. RB: rushing_yards, rushing_touchdowns, targets,
+            receptions, receiving_yards. WR and TE: targets, receptions,
+            receiving_yards, receiving_touchdowns, receptions_20_plus_yards.
+        limit: Maximum number of defenses to return, at most 32.
+    """
+
+    table = download_position(position)
+    sort_keys: dict[str, Callable[[DefenseRow], float | None]] = {
+        "draftkings_points": lambda d: d.draftkings_points,
+        "draftkings_points_this_season": lambda d: d.this_season_points,
+        "draftkings_points_last_4_games": lambda d: d.last_4_games_points,
+        **{stat: _stat(stat) for stat in STATS[table.position].values()},
+    }
+    if sort_by not in sort_keys:
+        raise ValueError(
+            f"Can't sort {table.position} defenses by {sort_by!r}; use one of "
+            f"{', '.join(sort_keys)}."
+        )
+
+    defenses = table.defenses
+    if team:
+        # An exact abbreviation wins: "LA" is the Rams, not Atlanta or Dallas.
+        query = team.strip().lower()
+        defenses = [d for d in defenses if d.team.lower() == query] or [
+            d for d in defenses if query in d.team_name.lower()
+        ]
+    # Missing numbers go last.
+    key = sort_keys[sort_by]
+    defenses = sorted(defenses, key=lambda d: (key(d) is None, -(key(d) or 0)))
+
+    return {
+        "position": table.position,
+        "this_season": table.this_season,
+        "last_season": table.last_season,
+        "defenses": [_defense(d) for d in defenses[: min(limit, 32)]],
+    }
+
+
+def _stat(stat: str) -> Callable[[DefenseRow], float | None]:
+    return lambda defense: defense.stats[stat]
+
+
+def _defense(defense: DefenseRow) -> dict:
+    return {
+        "rank": defense.rank,
+        "team": defense.team,
+        "team_name": defense.team_name,
+        "draftkings_points": defense.draftkings_points,
+        "fanduel_points": defense.fanduel_points,
+        "vs_league_average": defense.vs_league_average,
+        "draftkings_points_this_season": defense.this_season_points,
+        "draftkings_points_last_season": defense.last_season_points,
+        "draftkings_points_last_4_games": defense.last_4_games_points,
+        "stats_per_game": defense.stats,
+        "trend": defense.trend,
+    }
+
+
 # -------- the agent: system prompt + tools, the SDK runs the loop --------
 
 INSTRUCTIONS = """\
 You are a fantasy football assistant, used from a terminal or a web page. You
 help with lineup decisions using weekly NFL projections from Razzball and
-RotoWire, and DraftKings salaries.
+RotoWire, DraftKings salaries, and DraftEdge's numbers on how each defense
+does against each position.
 
 Projections:
 - Use the projection tools for any question about projected points. Never
@@ -450,6 +550,17 @@ Lineups:
   say the player probably isn't on the main slate.
 - You suggest and check lineups; don't claim one is the best possible.
 
+Defense vs position:
+- Use the defense vs position tool for questions about how defenses do
+  against a position, e.g. which give up the most rushing yards to running
+  backs. Sort by the stat asked about.
+- Its points and stats are blended with last season. Say "blended" or "this
+  season and last" when you give them; for this season alone, give
+  draftkings_points_this_season and call it that.
+- Rank 1 is the toughest matchup (fewest points allowed), rank 32 the
+  softest. "Most allowed" means the highest numbers, not rank 1.
+- Every number is per game; say so.
+
 Keep answers short. A small table works well for side-by-side numbers.
 """
 
@@ -465,5 +576,6 @@ def build_agent() -> Agent:
             fetch_rotowire_projections,
             fetch_draftkings_salaries,
             check_draftkings_lineup,
+            fetch_defense_vs_position,
         ],
     )

@@ -12,7 +12,7 @@ import requests
 from agents import FunctionTool
 from agents.tool_context import ToolContext
 
-from malamoneyball_agent import assistant, razzball, rotowire, terminal
+from malamoneyball_agent import assistant, draftedge, razzball, rotowire, terminal
 
 
 @dataclass
@@ -104,15 +104,62 @@ class RotoWireToolCaller:
             return asyncio.run(tool.on_invoke_tool(ctx, raw))
 
 
+class DraftEdgeToolCaller:
+    """Invokes the defense vs position tool against a fake DraftEdge.
+
+    It starts out serving the trimmed real pages in `fixtures/`, one per
+    position; set `pages[position]` to other HTML, or to a `requests` error,
+    and `status` to another HTTP status. `requests_made` counts requests over
+    the whole test.
+    """
+
+    def __init__(self) -> None:
+        fixtures = Path(__file__).parent / "fixtures"
+        self.pages: dict[str, str | Exception] = {
+            position: (fixtures / f"draftedge_{position.lower()}.html").read_text()
+            for position in draftedge.POSITIONS
+        }
+        self.status = 200
+        self.get = mock.Mock(side_effect=self._respond)
+
+    @property
+    def requests_made(self) -> int:
+        return self.get.call_count
+
+    def _respond(self, url: str, params: dict, **_kwargs: Any) -> requests.Response:
+        page = self.pages[params["pos"].upper()]
+        if isinstance(page, Exception):
+            raise page
+        fake = requests.Response()
+        fake.status_code = self.status
+        fake._content = page.encode()
+        return fake
+
+    def __call__(self, arguments: dict) -> Any:
+        tool = assistant.fetch_defense_vs_position
+        raw = json.dumps(arguments)
+        ctx = ToolContext(
+            context=None, tool_name=tool.name, tool_call_id="1", tool_arguments=raw
+        )
+        with mock.patch.object(draftedge.requests, "get", self.get):
+            return asyncio.run(tool.on_invoke_tool(ctx, raw))
+
+
 @pytest.fixture(autouse=True)
 def empty_projections_cache():
     razzball._projections_cache.clear()
     rotowire._main_slate_cache.clear()
+    draftedge._cache.clear()
 
 
 @pytest.fixture
 def fake_rotowire() -> RotoWireToolCaller:
     return RotoWireToolCaller()
+
+
+@pytest.fixture
+def fake_draftedge() -> DraftEdgeToolCaller:
+    return DraftEdgeToolCaller()
 
 
 def _fixture(name: str) -> Any:
