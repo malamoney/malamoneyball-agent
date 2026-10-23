@@ -45,7 +45,7 @@ def test_a_restart_within_12_hours_downloads_nothing(fake_draftedge, clock):
     output = fake_draftedge({"position": "RB", "team": "JAX"})
 
     assert fake_draftedge.requests_made == 1
-    assert output["defenses"][0]["draftkings_points"] == 17.6
+    assert output["defenses"][0]["draftkings_points_this_season"] == 17.3
     assert output["stale"] is False
 
 
@@ -113,7 +113,7 @@ def test_a_failed_download_uses_the_saved_copy_marked_stale(
     assert output["stale"] is True
     assert reason in output["stale_reason"]
     assert datetime.fromisoformat(output["downloaded_at"]) == TUESDAY
-    assert output["defenses"][0]["draftkings_points"] == 17.6
+    assert output["defenses"][0]["draftkings_points_this_season"] == 17.3
 
 
 def test_a_fresh_result_says_when_it_was_downloaded(fake_draftedge, clock):
@@ -183,7 +183,7 @@ def test_a_folder_that_cant_be_written_still_answers(fake_draftedge, clock, data
 
     output = fake_draftedge({"position": "RB", "team": "JAX"})
 
-    assert output["defenses"][0]["rank"] == 1
+    assert output["defenses"][0]["team"] == "JAX"
 
 
 def test_the_description_and_instructions_cover_stale_numbers():

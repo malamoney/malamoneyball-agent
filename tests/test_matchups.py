@@ -136,14 +136,15 @@ def test_comparisons_look_up_each_opponent_at_the_players_position():
     assert "at that player's position" in TEXT
 
 
-def test_each_position_gets_its_own_numbers():
-    assert "passing yards and passing TDs for QBs" in TEXT
-    assert "rushing yards and rushing TDs for RBs" in TEXT
-    assert "receiving yards and targets for WRs and TEs" in TEXT
+def test_matchups_give_only_this_seasons_points_and_rank():
+    assert "Give only this season's numbers" in TEXT
+    assert "(draftkings_points_this_season)" in TEXT
+    assert "(rank_this_season)" in TEXT
 
 
-def test_matchups_say_what_is_blended():
-    assert "Say which numbers are blended with last season" in TEXT
+def test_matchups_never_give_blended_numbers():
+    assert "Never give blended numbers when evaluating players" in TEXT
+    assert "any stat in stats_per_game" in TEXT
 
 
 def test_a_matchup_doesnt_overrule_a_clearly_better_projection():

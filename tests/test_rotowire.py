@@ -38,6 +38,8 @@ def test_returns_the_main_slate_players_by_projected_points(fake_rotowire):
         "kickoff": "2026-10-25 13:00:00",
         "injury_status": "QUE",
         "draftkings_points": 21.05,
+        "draftkings_salary": 6700,
+        "draftkings_points_per_1000": 3.14,
         "rotowire_id": "12561",
     }
 
