@@ -398,6 +398,11 @@ def fetch_defense_vs_position(
     and draftkings_points_last_4_games are the other stretches. Every number
     is per game.
 
+    The tables are downloaded at most every 12 hours. If DraftEdge can't be
+    reached or its page has changed, the last saved copy is used instead:
+    stale is then true, stale_reason says what went wrong, and downloaded_at
+    (local time) says how old the numbers are.
+
     Returns the position, the two seasons' names, and the defenses sorted by
     sort_by, most allowed first. Each has rank, team (abbreviation), team
     name, those points, vs_league_average (blended DraftKings points allowed
@@ -450,6 +455,9 @@ def fetch_defense_vs_position(
         "position": table.position,
         "this_season": table.this_season,
         "last_season": table.last_season,
+        "downloaded_at": table.downloaded_at.astimezone().isoformat(timespec="minutes"),
+        "stale": table.stale_reason is not None,
+        "stale_reason": table.stale_reason,
         "defenses": [_defense(d) for d in defenses[: min(limit, 32)]],
     }
 
@@ -567,6 +575,9 @@ Defense vs position:
 - Rank 1 is the toughest matchup (fewest points allowed), rank 32 the
   softest. "Most allowed" means the highest numbers, not rank 1.
 - Every number is per game; say so.
+- If the result is stale, say the numbers are DraftEdge's from when they
+  were downloaded (the day, and the time if it's today) because DraftEdge
+  couldn't be reached just now, in one short sentence.
 
 Matchups:
 - When comparing players for start/sit, a Lineup or a pick, or explaining a

@@ -11,23 +11,40 @@ last season's, 50/50 after 4 games and mostly this season by midseason.
 The stats were checked against the points on 2026-10-23: they track the
 blended points, not this season's. Only the "this season" column is this
 season alone.
+
+Each table that downloads and reads cleanly is saved in the data folder and
+reused for 12 hours, across restarts. If a later download fails, the saved
+copy is used however old it is, marked stale, so matchup questions still get
+numbers when DraftEdge is down or its page changes.
 """
 
+import json
 import math
 import re
-import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup, Tag
 
+from malamoneyball_agent.conversations import data_dir
+
 PAGE_URL = "https://draftedge.com/nfl/nfl-defense-vs-pos/"
 POSITIONS = ("QB", "RB", "WR", "TE")
 
-# The numbers only change after games are played.
-CACHE_SECONDS = 3600
-_cache: dict[str, tuple[float, DefenseVsPosition]] = {}
-_now = time.monotonic
+# The numbers only change after games are played, but game days vary
+# (Thursday to Monday, plus the odd Wednesday, Friday or Saturday game) and
+# Monday's game ends after midnight. 12 hours keeps downloads rare while a
+# copy saved just before DraftEdge updates is still fixed the same day.
+CACHE_LIFETIME = timedelta(hours=12)
+SAVED_FOLDER = "draftedge"
+_cache: dict[str, DefenseVsPosition] = {}
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
 
 # Column headings, and the names the tool uses for them. Every heading must be
 # there, and no others, so a renamed or added column fails loudly rather than
@@ -95,37 +112,89 @@ class DefenseRow:
 
 @dataclass(frozen=True)
 class DefenseVsPosition:
+    """One position's table. stale_reason says why a saved copy was used."""
+
     position: str
     last_season: str
     this_season: str
     defenses: list[DefenseRow]
+    downloaded_at: datetime
+    stale_reason: str | None = None
 
 
 def download_position(position: str) -> DefenseVsPosition:
     """Return every defense's numbers against position (QB, RB, WR or TE).
 
-    Served from cache when fresh.
+    Served from the copy in memory or saved on disk when it's under 12 hours
+    old. If downloading fails, a saved copy of any age is returned instead,
+    with stale_reason set; with no saved copy, the error is raised.
     """
     position = position.upper()
     if position not in POSITIONS:
         raise ValueError(f"Position must be QB, RB, WR or TE, not {position!r}.")
-    cached = _cache.get(position)
-    if cached and _now() - cached[0] < CACHE_SECONDS:
-        return cached[1]
+    saved = _cache.get(position) or _load(position)
+    if saved:
+        _cache[position] = saved
+        if _now() - saved.downloaded_at < CACHE_LIFETIME:
+            return saved
 
+    try:
+        html = _download(position)
+        table = parse_table(html, position, downloaded_at=_now())
+    except RuntimeError as error:
+        if saved is None:
+            raise
+        return replace(saved, stale_reason=str(error))
+
+    # Only a table that read cleanly is saved, so a changed page never
+    # replaces a good copy.
+    _save(position, html, table.downloaded_at)
+    _cache[position] = table
+    return table
+
+
+def _download(position: str) -> str:
     try:
         response = requests.get(PAGE_URL, params={"pos": position.lower()}, timeout=30)
     except requests.RequestException as error:
         raise RuntimeError(f"Could not reach DraftEdge: {error}") from error
     if not response.ok:
         raise RuntimeError(f"DraftEdge returned HTTP {response.status_code}.")
-
-    table = parse_table(response.text, position)
-    _cache[position] = (_now(), table)
-    return table
+    return response.text
 
 
-def parse_table(html: str, position: str) -> DefenseVsPosition:
+def _saved_file(position: str) -> Path:
+    return data_dir() / SAVED_FOLDER / f"{position.lower()}.json"
+
+
+def _save(position: str, html: str, downloaded_at: datetime) -> None:
+    path = _saved_file(position)
+    saved = {"downloaded_at": downloaded_at.isoformat(), "html": html}
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Written aside and then moved, so a crash never leaves half a file.
+        partial = path.with_suffix(".partial")
+        partial.write_text(json.dumps(saved), encoding="utf-8")
+        partial.replace(path)
+    except OSError:
+        pass  # Not being able to save only means downloading again next time.
+
+
+def _load(position: str) -> DefenseVsPosition | None:
+    # A missing, unreadable or no-longer-parsing file is the same as none.
+    try:
+        saved = json.loads(_saved_file(position).read_text(encoding="utf-8"))
+        downloaded_at = datetime.fromisoformat(saved["downloaded_at"])
+        if downloaded_at.tzinfo is None:
+            return None
+        return parse_table(saved["html"], position, downloaded_at=downloaded_at)
+    except OSError, ValueError, KeyError, TypeError, RuntimeError:
+        return None
+
+
+def parse_table(
+    html: str, position: str, downloaded_at: datetime | None = None
+) -> DefenseVsPosition:
     """Read one position's table from DraftEdge's page."""
     table = BeautifulSoup(html, "html.parser").select_one("table#dvp-table")
     if table is None:
@@ -164,7 +233,9 @@ def parse_table(html: str, position: str) -> DefenseVsPosition:
     if len({d.team for d in defenses}) != len(defenses):
         raise RuntimeError(f"DraftEdge's {position} table lists a team twice.")
 
-    return DefenseVsPosition(position, last_season, this_season, defenses)
+    return DefenseVsPosition(
+        position, last_season, this_season, defenses, downloaded_at or _now()
+    )
 
 
 def _row(
