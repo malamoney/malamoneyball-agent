@@ -116,16 +116,23 @@ Good to know:
   Thursday, international, Sunday night or Monday games). They come from the
   data behind RotoWire's DraftKings optimizer page, which needs no key but
   isn't an official API, so it may change without notice.
-- **Defense vs position:** DraftEdge's points and stats allowed are per game
-  and blend this season with last season (about 50/50 after 4 games, mostly
-  this season by midseason), so answers call them blended. Its "this season"
-  points are this season alone. Rank 1 is the toughest defense to face, 32
-  the softest. It comes from DraftEdge's public Defense vs Position page,
-  which isn't an API, so it may change without notice.
+- **Defense vs position:** DraftEdge's numbers are per game. Answers judge
+  a defense by the DraftKings points it has allowed to a position this
+  season alone, and its rank by them: 1 is the toughest defense to face, 32
+  the softest. DraftEdge's other numbers, including every stat such as
+  rushing yards allowed, blend this season with last season (about 50/50
+  after 4 games, mostly this season by midseason), so answers only use them
+  when you ask about those stats, and call them blended. It comes from
+  DraftEdge's public Defense vs Position page, which isn't an API, so it
+  may change without notice.
 - **Matchups:** when comparing players or building a lineup, answers say how
-  each player's opponent has done against that position, as one reason among
-  others; a matchup doesn't overrule a clearly better projection unless you
-  ask about matchups. Team defenses have no matchup numbers.
+  many DraftKings points each player's opponent has allowed to that position
+  per game this season, and its rank, as one reason among others; a matchup
+  doesn't overrule a clearly better projection unless you ask about
+  matchups. Team defenses have no matchup numbers.
+- **Value:** comparisons show each player's DraftKings salary and projected
+  DraftKings points per $1,000 of it, for each source. Only players on this
+  week's DraftKings main slate have a salary.
 - **Speed:** each week's projections are downloaded once and reused for five
   minutes. DraftEdge's defense numbers are saved in the data folder (under
   `draftedge/`) and reused for 12 hours, even after a restart. If DraftEdge

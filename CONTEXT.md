@@ -49,5 +49,5 @@ The 9 players a Manager enters in a DraftKings Classic contest: 1 QB, 2 RB, 3 WR
 _Avoid_: Roster, team (for this meaning)
 
 **Defense vs Position**:
-How an NFL defense has done against one offensive position (QB, RB, WR or TE): the DraftKings points and stats per game that players at that position put up against it, from DraftEdge. Most of its numbers blend this season with last season; only the "this season" points are this season alone.
+How an NFL defense has done against one offensive position (QB, RB, WR or TE): the DraftKings points and stats per game that players at that position put up against it, from DraftEdge. Most of its numbers blend this season with last season; only the "this season", "last 4 games" and "last season" points don't. Matchups are judged on this season's points alone, and the rank by them.
 _Avoid_: DvP, matchup (for the numbers themselves), defense rankings

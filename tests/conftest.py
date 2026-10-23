@@ -25,11 +25,18 @@ class ProjectionsToolCaller:
     """Invokes the projections tool against a fake Razzball.
 
     One fake `requests.get` is shared across calls, so `requests_made` counts
-    network requests over the whole test.
+    requests to Razzball over the whole test. For the current week the tool
+    also reads DraftKings salaries from RotoWire, served by `rotowire`.
     """
 
     def __init__(self) -> None:
         self.get = mock.Mock()
+        self.rotowire = RotoWireToolCaller()
+
+    def _route(self, url: str, *args: Any, **kwargs: Any) -> Any:
+        if url in (rotowire.SLATE_LIST_URL, rotowire.PLAYERS_URL):
+            return self.rotowire.get(url, *args, **kwargs)
+        return self.get(url, *args, **kwargs)
 
     @property
     def requests_made(self) -> int:
@@ -56,7 +63,9 @@ class ProjectionsToolCaller:
             tool_call_id="1",
             tool_arguments=json.dumps(arguments),
         )
-        with mock.patch.object(razzball.requests, "get", self.get):
+        # Razzball and RotoWire share one `requests` module, so one fake routes
+        # each request to its own fake site.
+        with mock.patch.object(requests, "get", self._route):
             output = asyncio.run(tool.on_invoke_tool(ctx, json.dumps(arguments)))
 
         url = self.get.call_args.args[0] if self.get.call_args else ""

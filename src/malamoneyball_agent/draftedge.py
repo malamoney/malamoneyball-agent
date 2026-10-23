@@ -192,6 +192,23 @@ def _load(position: str) -> DefenseVsPosition | None:
         return None
 
 
+def this_season_ranks(defenses: list[DefenseRow]) -> dict[str, int]:
+    """Each defense's rank by DraftKings points allowed this season alone.
+
+    Rank 1 allows the fewest, the toughest matchup. DraftEdge's own rank is
+    by its blended points, so it can't be used for this season. Tied
+    defenses share a rank; a defense with no number this season has none.
+    """
+    points = sorted(
+        d.this_season_points for d in defenses if d.this_season_points is not None
+    )
+    return {
+        d.team: points.index(d.this_season_points) + 1
+        for d in defenses
+        if d.this_season_points is not None
+    }
+
+
 def parse_table(
     html: str, position: str, downloaded_at: datetime | None = None
 ) -> DefenseVsPosition:
