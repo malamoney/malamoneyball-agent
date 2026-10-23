@@ -127,7 +127,10 @@ Good to know:
   others; a matchup doesn't overrule a clearly better projection unless you
   ask about matchups. Team defenses have no matchup numbers.
 - **Speed:** each week's projections are downloaded once and reused for five
-  minutes; DraftEdge's defense numbers are reused for an hour.
+  minutes. DraftEdge's defense numbers are saved in the data folder (under
+  `draftedge/`) and reused for 12 hours, even after a restart. If DraftEdge
+  can't be reached, or its page has changed, answers use the last saved
+  numbers and say how old they are.
 
 ## The web page
 

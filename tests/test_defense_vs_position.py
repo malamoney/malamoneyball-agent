@@ -167,17 +167,6 @@ def test_repeat_calls_reuse_one_download_per_position(fake_draftedge):
     assert fake_draftedge.requests_made == 2
 
 
-def test_downloads_again_after_an_hour(fake_draftedge, monkeypatch):
-    from malamoneyball_agent import draftedge
-
-    clock = iter([0.0, 3601.0, 3601.0])  # saved, checked, saved again
-    monkeypatch.setattr(draftedge, "_now", lambda: next(clock))
-    fake_draftedge({"position": "RB"})
-    fake_draftedge({"position": "RB"})
-
-    assert fake_draftedge.requests_made == 2
-
-
 # DraftEdge changing its page must give a clear error, never numbers read
 # from the wrong column.
 
