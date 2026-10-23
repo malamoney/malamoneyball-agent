@@ -5,7 +5,12 @@ from collections.abc import Callable
 
 from agents import Agent, function_tool
 
-from malamoneyball_agent.draftedge import STATS, DefenseRow, download_position
+from malamoneyball_agent.draftedge import (
+    STATS,
+    TEAM_ALIASES,
+    DefenseRow,
+    download_position,
+)
 from malamoneyball_agent.draftkings_lineup import (
     SALARY_CAP,
     LineupPlayer,
@@ -404,7 +409,8 @@ def fetch_defense_vs_position(
     Args:
         position: The offensive position: QB, RB, WR or TE.
         team: Only return this defense, by abbreviation ("KC") or any part
-            of its name ("Chiefs", "Kansas City"). Use "" for all 32.
+            of its name ("Chiefs", "Kansas City"). A player's opponent from
+            the projections tools works as it is. Use "" for all 32.
         sort_by: What to sort by, most allowed first: draftkings_points
             (blended), draftkings_points_this_season,
             draftkings_points_last_4_games, or a stat. QB stats:
@@ -432,7 +438,8 @@ def fetch_defense_vs_position(
     if team:
         # An exact abbreviation wins: "LA" is the Rams, not Atlanta or Dallas.
         query = team.strip().lower()
-        defenses = [d for d in defenses if d.team.lower() == query] or [
+        abbreviation = TEAM_ALIASES.get(query.upper(), query).lower()
+        defenses = [d for d in defenses if d.team.lower() == abbreviation] or [
             d for d in defenses if query in d.team_name.lower()
         ]
     # Missing numbers go last.
@@ -560,6 +567,25 @@ Defense vs position:
 - Rank 1 is the toughest matchup (fewest points allowed), rank 32 the
   softest. "Most allowed" means the highest numbers, not rank 1.
 - Every number is per game; say so.
+
+Matchups:
+- When comparing players for start/sit, a Lineup or a pick, or explaining a
+  pick, look up each player's opponent (from the projections) in the defense
+  vs position tool, at that player's position. Use the opponent exactly as
+  the projections give it.
+- Give the numbers that matter for the position, per game: passing yards and
+  passing TDs for QBs; rushing yards and rushing TDs for RBs; receiving
+  yards and targets for WRs and TEs; plus DraftKings points allowed. Say
+  which numbers are blended with last season and which are this season
+  alone, and give the defense's rank out of 32.
+- A matchup is one reason among others. Mention a clearly good or bad one,
+  but don't let it overrule a clearly better projection unless the user
+  asks about matchups.
+- For "best matchups" questions, pair the players at that position with
+  their opponents' numbers and sort by them; say which projections and
+  slate the players came from.
+- Team defenses (DST) have no matchup numbers: DraftEdge covers QB, RB, WR
+  and TE only.
 
 Keep answers short. A small table works well for side-by-side numbers.
 """

@@ -61,6 +61,14 @@ STATS: dict[str, dict[str, str]] = {
 }
 _SEASON_HEADING = re.compile(r"(\d{4}-\d{2})/G")
 
+# Abbreviations the projections spell differently from DraftEdge, checked
+# against live data on 2026-10-23: Razzball and RotoWire call the Rams LAR,
+# where DraftEdge has LA, and Razzball calls Jacksonville JAC, where DraftEdge
+# has JAX. Defenses are returned under the projections' LAR; both spellings
+# of each find the same defense.
+_RENAMED = {"LA": "LAR"}
+TEAM_ALIASES = {"LA": "LAR", "JAC": "JAX"}
+
 
 @dataclass(frozen=True)
 class DefenseRow:
@@ -176,7 +184,7 @@ def _row(
 
     return DefenseRow(
         rank=int(_text(by_heading["Rank"])),
-        team=_text(abbreviation),
+        team=_RENAMED.get(_text(abbreviation), _text(abbreviation)),
         team_name=_text(name),
         **{field: _number(by_heading[heading]) for heading, field in _POINTS.items()},
         last_season_points=_number(by_heading[f"{last_season}/G"]),

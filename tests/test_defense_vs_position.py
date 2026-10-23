@@ -6,7 +6,8 @@ import requests
 from malamoneyball_agent.assistant import INSTRUCTIONS, fetch_defense_vs_position
 
 # The fixtures are DraftEdge's real tables from 2026-10-23, trimmed to 8 or 9
-# of their 32 defenses each: the 3 toughest, the 3 softest, and KC, HOU and LA.
+# of their 32 defenses each: the 3 toughest, the 3 softest, and KC, HOU and
+# the Rams (LA on DraftEdge).
 
 
 def teams(output) -> list[str]:
@@ -45,7 +46,17 @@ def test_returns_every_number_for_a_defense(fake_draftedge):
 def test_most_draftkings_points_allowed_first_by_default(fake_draftedge):
     output = fake_draftedge({"position": "QB"})
 
-    assert teams(output) == ["DET", "DAL", "WAS", "LA", "HOU", "KC", "GB", "SEA", "MIN"]
+    assert teams(output) == [
+        "DET",
+        "DAL",
+        "WAS",
+        "LAR",
+        "HOU",
+        "KC",
+        "GB",
+        "SEA",
+        "MIN",
+    ]
     assert [d["rank"] for d in output["defenses"]] == [32, 31, 30, 19, 14, 5, 3, 2, 1]
 
 
@@ -54,7 +65,7 @@ def test_most_rushing_yards_allowed_to_running_backs(fake_draftedge):
 
     yards = [d["stats_per_game"]["rushing_yards"] for d in output["defenses"]]
     assert yards == sorted(yards, reverse=True)
-    assert teams(output)[:3] == ["NYJ", "NO", "LA"]
+    assert teams(output)[:3] == ["NYJ", "NO", "LAR"]
 
 
 def test_sorts_by_this_seasons_points(fake_draftedge):
@@ -115,11 +126,12 @@ def test_finds_a_defense_by_abbreviation_or_name(fake_draftedge, team):
     assert output["defenses"][0]["rank"] == 26
 
 
-def test_an_abbreviation_must_match_exactly(fake_draftedge):
+@pytest.mark.parametrize("team", ["LAR", "LA", "lar"])
+def test_an_abbreviation_must_match_exactly(fake_draftedge, team):
     # "LA" is the Rams, not Atlanta or Dallas.
-    output = fake_draftedge({"position": "WR", "team": "LA"})
+    output = fake_draftedge({"position": "WR", "team": team})
 
-    assert teams(output) == ["LA"]
+    assert teams(output) == ["LAR"]
 
 
 def test_limit(fake_draftedge):

@@ -82,6 +82,7 @@ Things you can ask:
 - "I have Gibbs and Nacua. How much can I spend per player on the rest?"
 - "Which defenses give up the most rushing yards to running backs?"
 - "How has the Chiefs' defense done against tight ends?"
+- "Which running backs have the best matchups this week?"
 
 Good to know:
 
@@ -121,6 +122,10 @@ Good to know:
   points are this season alone. Rank 1 is the toughest defense to face, 32
   the softest. It comes from DraftEdge's public Defense vs Position page,
   which isn't an API, so it may change without notice.
+- **Matchups:** when comparing players or building a lineup, answers say how
+  each player's opponent has done against that position, as one reason among
+  others; a matchup doesn't overrule a clearly better projection unless you
+  ask about matchups. Team defenses have no matchup numbers.
 - **Speed:** each week's projections are downloaded once and reused for five
   minutes; DraftEdge's defense numbers are reused for an hour.
 
