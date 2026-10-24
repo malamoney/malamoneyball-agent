@@ -2,8 +2,9 @@
 
 A fantasy football assistant that runs in your terminal or a web page on your
 own machine. Ask it lineup questions in plain English and it answers from
-[Razzball](https://razzball.com)'s and [RotoWire](https://www.rotowire.com)'s
-weekly NFL projections, side by side (or just one, if you name it), and
+[Razzball](https://razzball.com)'s, [RotoWire](https://www.rotowire.com)'s
+and [FootballGuys](https://www.footballguys.com)' weekly NFL projections,
+side by side (or just the ones you name), and
 knows how each defense has done against each position this season from
 [DraftEdge](https://draftedge.com/nfl/nfl-defense-vs-pos/) and
 [Yahoo](https://football.fantasysports.yahoo.com/f1/pointsagainst):
@@ -11,12 +12,13 @@ knows how each defense has done against each position this season from
 ```
 You: Should I start Jahmyr Gibbs or Bijan Robinson?
 
-Agent: Start Jahmyr Gibbs. Both sources favor him over Bijan Robinson.
+Agent: I'd lean Jahmyr Gibbs, though it's close: Razzball's PPR projection
+slightly favors Bijan Robinson, while RotoWire and FootballGuys favor Gibbs.
 
-| Player         | Position, opponent | Razzball PPR | Razzball DK | RotoWire DK |
-|----------------|--------------------|-------------:|------------:|------------:|
-| Jahmyr Gibbs   | RB vs. GB          |         28.5 |        30.6 |       25.34 |
-| Bijan Robinson | RB vs. SF          |         22.6 |        24.1 |       22.72 |
+| Player         | Opponent | Razzball PPR | Razzball DK | RotoWire DK | FootballGuys stats, DK rules |
+|----------------|----------|-------------:|------------:|------------:|-----------------------------:|
+| Jahmyr Gibbs   | GB       |         28.6 |        30.6 |       25.57 |                         26.8 |
+| Bijan Robinson | SF       |         29.6 |        32.0 |       23.89 |                         22.3 |
 ```
 
 It's built on the [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/):
@@ -90,13 +92,17 @@ Good to know:
 
 - **Scoring:** answers use PPR unless you ask for another format (standard,
   half-PPR, DraftKings or FanDuel). RotoWire only projects DraftKings points,
-  so answers compare it with Razzball's DraftKings points and label which
+  and FootballGuys only stats, which the app scores with DraftKings' rules,
+  so answers compare both with Razzball's DraftKings points and label which
   scoring each number uses.
-- **FootballGuys:** ask for [FootballGuys](https://www.footballguys.com)' consensus
-  projections by name. They're projected stats only, for QBs, RBs, WRs and
-  TEs, so the app scores them with DraftKings' rules. Those points leave out
-  yardage bonuses and return TDs, which FootballGuys doesn't project, so
-  they run a little low.
+- **FootballGuys:** its consensus projections cover QBs, RBs, WRs and TEs,
+  not team defenses. Its DraftKings points leave out yardage bonuses and
+  return TDs, which FootballGuys doesn't project, so they run a little low.
+  Its download has no opponents or salaries, so each player is matched by
+  name and team to RotoWire's main slate (or, off it, to Razzball's
+  projections); a player that can't be matched, such as one listed under a
+  nickname, has none. If FootballGuys hasn't posted a week yet, answers
+  say so and use the other sources.
 - **Team defenses:** Razzball's DraftKings points for defenses run about 4
   points above what DraftKings' scoring rules give for Razzball's own
   projected stats, and above RotoWire's. Answers show both Razzball numbers,
