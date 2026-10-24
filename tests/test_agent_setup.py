@@ -18,7 +18,7 @@ def test_agent_only_has_fantasy_football_tools():
 
 def test_agent_is_set_up_as_a_fantasy_football_assistant():
     built = assistant.build_agent()
-    instructions = str(built.instructions)
+    instructions = assistant.instructions(None, built)
 
     assert "fantasy football" in built.name.lower()
     assert "PPR" in instructions  # default scoring format

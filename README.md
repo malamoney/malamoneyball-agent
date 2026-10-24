@@ -113,8 +113,9 @@ Good to know:
   assistant suggests and checks lineups; it doesn't search for the best
   possible one.
 - **"This week":** follows the NFL calendar. Weeks run Tuesday to Monday,
-  starting the week of the Thursday after Labor Day. Outside the regular
-  season, name a week explicitly.
+  starting the week of the Thursday after Labor Day. The assistant is told
+  today's date and week at the start of every answer, so "next week" and
+  "last week" work too. Outside the regular season, name a week explicitly.
 - **Where conversations are saved:** in `conversations.db` in your per-user
   data folder (`~/Library/Application Support/malamoneyball` on macOS,
   `~/.local/share/malamoneyball` on Linux), whichever folder you start the
