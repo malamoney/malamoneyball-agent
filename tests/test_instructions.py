@@ -91,3 +91,10 @@ def test_lineup_answers_give_the_salary_and_open_slots():
 
 def test_ambiguous_names_are_asked_about():
     assert "If a name is ambiguous, ask which player is meant" in TEXT
+
+
+def test_footballguys_is_used_when_named_and_labelled_as_dk_rules():
+    assert "used only when the user names it" in TEXT
+    assert '"FootballGuys stats, DK rules", never PPR' in TEXT
+    assert "FootballGuys only has DraftKings points here" in TEXT
+    assert "the week isn't posted yet, say so" in TEXT

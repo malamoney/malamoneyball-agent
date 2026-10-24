@@ -5,17 +5,18 @@ from collections.abc import Callable
 
 from agents import Agent, function_tool
 
-from malamoneyball_agent import draftedge, yahoo
+from malamoneyball_agent import draftedge, footballguys, yahoo
 from malamoneyball_agent.draftedge import TEAM_ALIASES, this_season_ranks
 from malamoneyball_agent.draftkings_lineup import (
     SALARY_CAP,
     LineupPlayer,
     check_lineup,
 )
-from malamoneyball_agent.draftkings_scoring import draftkings_points
+from malamoneyball_agent.draftkings_scoring import DraftKingsPoints, draftkings_points
 from malamoneyball_agent.models import (
     DraftEdgeDefense,
     DraftEdgePointsAllowed,
+    FootballGuysProjection,
     NFLPlayerProjection,
     RotoWirePlayer,
     YahooDefenseStats,
@@ -190,11 +191,7 @@ def _razzball_player(
             scored.total, salary
         )
     if explain:
-        row["draftkings_breakdown"] = {
-            category: round(points, 2)
-            for category, points in scored.by_category.items()
-            if round(points, 2) != 0
-        }
+        row["draftkings_breakdown"] = _breakdown(scored)
         if not is_defense:
             row["draftkings_bonus_chances"] = {
                 field.removesuffix("_bonus_chance"): chance
@@ -202,6 +199,15 @@ def _razzball_player(
                 if field.endswith("_bonus_chance") and chance
             }
     return row
+
+
+def _breakdown(scored: DraftKingsPoints) -> dict[str, float]:
+    # Categories worth 0 are left out.
+    return {
+        category: round(points, 2)
+        for category, points in scored.by_category.items()
+        if round(points, 2) != 0
+    }
 
 
 def _rotowire_id(value: str | None) -> str | None:
@@ -272,6 +278,100 @@ def fetch_rotowire_projections(
             for player in players[: min(limit, 100)]
         ],
     }
+
+
+@function_tool
+def fetch_footballguys_projections(
+    season: str = "",
+    week: str = "",
+    position: str = "",
+    player_name: str = "",
+    limit: int = 50,
+) -> dict:
+    """Fetch FootballGuys' weekly consensus projections for NFL players.
+
+    FootballGuys projects stats only, for QBs, RBs, WRs and TEs; no team
+    defenses or kickers, no fantasy points, and no opponent. Each player
+    comes back with name, position, team, footballguys_id and stats, the
+    projected stats for their position (passing, rushing and receiving
+    attempts, yards, TDs and 2-point conversions, completions, targets,
+    receptions, interceptions, sacks and fumbles lost). draftkings_points_by_rules
+    is those stats scored with DraftKings' rules by this app, not points
+    FootballGuys publishes; it leaves out yardage bonuses and return TDs,
+    which FootballGuys doesn't project, so it runs a little low. There are
+    no standard, half-PPR or PPR points.
+
+    When player_name is given, each player also has draftkings_breakdown:
+    the points from each DraftKings scoring category (categories worth 0 are
+    left out), adding up to draftkings_points_by_rules.
+
+    Returns the season, the week and its players, sorted by
+    draftkings_points_by_rules, highest first. When FootballGuys hasn't
+    posted the week yet, players is empty and note says so. Returns no
+    players when no week is given and the NFL regular season isn't under
+    way. A player missing from a posted week usually has a bye or isn't
+    expected to play.
+
+    Args:
+        season: Season year, the year it kicked off, e.g. "2026". Use "" for
+            the current season.
+        week: Regular-season week, "1" to "18". Use "" for the current NFL week.
+        position: Only return players at this position (case-insensitive): QB,
+            RB, WR or TE. Use "" for all positions.
+        player_name: Only return players whose name contains this text, a
+            case-insensitive match on any part of the name, e.g. "gibbs".
+            Use "" for all players.
+        limit: Maximum number of players to return, at most 100.
+    """
+
+    nfl_season = int(season) if season else get_nfl_season()
+    nfl_week = int(week) if week else get_nfl_week()
+    if nfl_week is None:
+        return {"season": nfl_season, "week": None, "players": []}
+
+    projections = footballguys.download_week(nfl_season, nfl_week)
+    result: dict = {"season": nfl_season, "week": nfl_week}
+    if not projections.players:
+        result["note"] = (
+            f"FootballGuys hasn't posted projections for {nfl_season} week "
+            f"{nfl_week} yet."
+        )
+
+    players = projections.players
+    if position:
+        players = [player for player in players if player.position == position.upper()]
+    if player_name:
+        query = player_name.lower()
+        players = [player for player in players if query in player.name.lower()]
+
+    scored = [
+        (player, draftkings_points(footballguys.offense_stats(player)))
+        for player in players
+    ]
+    scored.sort(key=lambda pair: pair[1].total, reverse=True)
+    explain = bool(player_name)
+    result["players"] = [
+        _footballguys_player(player, points, explain)
+        for player, points in scored[: min(limit, 100)]
+    ]
+    return result
+
+
+def _footballguys_player(
+    player: FootballGuysProjection, scored: DraftKingsPoints, explain: bool
+) -> dict:
+    identity = {"footballguys_id", "name", "position", "team"}
+    row: dict = {
+        "name": player.name,
+        "position": player.position,
+        "team": player.team,
+        "footballguys_id": player.footballguys_id,
+        "stats": player.model_dump(exclude=identity, exclude_none=True),
+        "draftkings_points_by_rules": round(scored.total, 1),
+    }
+    if explain:
+        row["draftkings_breakdown"] = _breakdown(scored)
+    return row
 
 
 @function_tool
@@ -638,6 +738,12 @@ Projections:
   and say why.
 - If one source returns an error, answer from the other and mention the
   problem in one short sentence.
+- FootballGuys is a third source, used only when the user names it ("What
+  does FootballGuys project"). Its draftkings_points_by_rules are FootballGuys'
+  projected stats scored with DraftKings' rules: label them "FootballGuys
+  stats, DK rules", never PPR or FootballGuys' own points. For any other
+  scoring format, say FootballGuys only has DraftKings points here. If its
+  note says the week isn't posted yet, say so.
 - If neither source has a well-known player, their team is probably on a bye
   or they aren't expected to play; say so before suggesting a spelling check.
   In RotoWire projections or DraftKings salaries alone, a missing player is
@@ -739,6 +845,7 @@ def build_agent() -> Agent:
         tools=[
             fetch_razzball_projections,
             fetch_rotowire_projections,
+            fetch_footballguys_projections,
             fetch_draftkings_salaries,
             check_draftkings_lineup,
             fetch_defense_vs_position,
