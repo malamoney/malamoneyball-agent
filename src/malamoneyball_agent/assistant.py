@@ -1,7 +1,9 @@
 """The Assistant: its tools, instructions and model choice."""
 
 import os
+import re
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from agents import Agent, function_tool
 
@@ -121,25 +123,29 @@ def fetch_razzball_projections(
     ]
 
 
-def _main_slate_salaries(season: str, week: str) -> dict[str, int]:
-    """This week's DraftKings main-slate salaries, keyed as _salary_key does.
+def _current_main_slate(season: str, week: str) -> list[RotoWirePlayer]:
+    """This week's DraftKings main-slate players, from RotoWire.
 
-    Empty for any other week, or if RotoWire, where the salaries come from,
-    can't be read: then Razzball's projections are answered without them.
+    Empty for any other week, or if RotoWire can't be read: then projections
+    are answered without salaries.
     """
     if (season, week.lstrip("0")) != (str(get_nfl_season()), str(get_nfl_week())):
-        return {}
+        return []
     try:
-        players = download_main_slate().players
+        return download_main_slate().players
     except RuntimeError:
-        return {}
+        return []
+
+
+def _main_slate_salaries(season: str, week: str) -> dict[str, int]:
+    """This week's DraftKings main-slate salaries, keyed as _salary_key does."""
     return {
         (
             f"team:{_team(player.team.abbr)}"
             if player.rotoPos == "DST"
             else str(player.rwID)
         ): player.salary
-        for player in players
+        for player in _current_main_slate(season, week)
     }
 
 
@@ -291,8 +297,8 @@ def fetch_footballguys_projections(
     """Fetch FootballGuys' weekly consensus projections for NFL players.
 
     FootballGuys projects stats only, for QBs, RBs, WRs and TEs; no team
-    defenses or kickers, no fantasy points, and no opponent. Each player
-    comes back with name, position, team, footballguys_id and stats, the
+    defenses or kickers, and no fantasy points. Each player comes back with
+    name, position, team, footballguys_id and stats, the
     projected stats for their position (passing, rushing and receiving
     attempts, yards, TDs and 2-point conversions, completions, targets,
     receptions, interceptions, sacks and fumbles lost). draftkings_points_by_rules
@@ -300,6 +306,14 @@ def fetch_footballguys_projections(
     FootballGuys publishes; it leaves out yardage bonuses and return TDs,
     which FootballGuys doesn't project, so it runs a little low. There are
     no standard, half-PPR or PPR points.
+
+    FootballGuys gives no opponent and its own player ids, so each player is
+    matched by name and team: to RotoWire's DraftKings main slate for this
+    week, else to Razzball's projections. A match fills in opponent and
+    rotowire_id, the same player's rotowire_id in the other two tools; a main
+    slate match also fills in draftkings_salary and draftkings_points_per_1000
+    (draftkings_points_by_rules per $1,000 of salary). They're null for a
+    player that can't be matched, or isn't on the main slate.
 
     When player_name is given, each player also has draftkings_breakdown:
     the points from each DraftKings scoring category (categories worth 0 are
@@ -350,24 +364,135 @@ def fetch_footballguys_projections(
     ]
     scored.sort(key=lambda pair: pair[1].total, reverse=True)
     explain = bool(player_name)
+    shown = scored[: min(limit, 100)]
+    matches = _footballguys_matches(
+        str(nfl_season),
+        str(nfl_week),
+        {player.footballguys_id for player, _ in shown},
+        projections.players,
+    )
     result["players"] = [
-        _footballguys_player(player, points, explain)
-        for player, points in scored[: min(limit, 100)]
+        _footballguys_player(
+            player, points, explain, matches.get(player.footballguys_id)
+        )
+        for player, points in shown
     ]
     return result
 
 
+@dataclass(frozen=True)
+class _Match:
+    """What another source says about a FootballGuys player."""
+
+    rotowire_id: str | None
+    opponent: str
+    salary: int | None
+
+
+_NAME_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
+
+
+def _player_key(name: str, team: str) -> tuple[str, str]:
+    """A player's name and team, written the way every source can agree on.
+
+    Names differ a little between sources (FootballGuys' "Brian Robinson Jr"
+    is RotoWire's "Brian Robinson"), so they're compared lowercase, without
+    punctuation or suffixes.
+    """
+    words = re.sub(r"[^a-z ]", "", name.lower()).split()
+    return " ".join(w for w in words if w not in _NAME_SUFFIXES), _team(team)
+
+
+def _unique[T](players: list[T], key: Callable[[T], tuple[str, str]]) -> dict:
+    """Players by key, leaving out any key two players share: never guess."""
+    found: dict[tuple[str, str], T] = {}
+    shared = set()
+    for player in players:
+        if key(player) in found:
+            shared.add(key(player))
+        found[key(player)] = player
+    return {k: player for k, player in found.items() if k not in shared}
+
+
+def _footballguys_matches(
+    season: str, week: str, wanted: set[str], everyone: list[FootballGuysProjection]
+) -> dict[str, _Match]:
+    """The wanted FootballGuys players' matches, by footballguys_id.
+
+    Matched to RotoWire's main slate first, for its salaries; players off it
+    are matched to Razzball's week, for their opponent.
+    """
+    ours = {
+        key: player.footballguys_id
+        for key, player in _unique(
+            everyone, lambda player: _player_key(player.name, player.team)
+        ).items()
+        if player.footballguys_id in wanted
+    }
+    matches: dict[str, _Match] = {}
+
+    slate = _unique(
+        [p for p in _current_main_slate(season, week) if p.rotoPos != "DST"],
+        lambda player: _player_key(player.name, player.team.abbr),
+    )
+    for key, footballguys_id in ours.items():
+        if rotowire_player := slate.get(key):
+            matches[footballguys_id] = _Match(
+                rotowire_id=str(rotowire_player.rwID),
+                opponent=_team(rotowire_player.opponent.team),
+                salary=rotowire_player.salary,
+            )
+
+    if len(matches) < len(ours):
+        week_players = _unique(
+            [
+                p
+                for p in _razzball_week(season, week)
+                if p.pos in footballguys.POSITIONS
+            ],
+            lambda player: _player_key(player.name, player.team),
+        )
+        for key, footballguys_id in ours.items():
+            razzball_player = week_players.get(key)
+            if footballguys_id not in matches and razzball_player:
+                matches[footballguys_id] = _Match(
+                    rotowire_id=_rotowire_id(razzball_player.rotowireid),
+                    opponent=_team(razzball_player.opp),
+                    salary=None,
+                )
+    return matches
+
+
+def _razzball_week(season: str, week: str) -> list[NFLPlayerProjection]:
+    # Without Razzball, players off the main slate just go unmatched.
+    razzball_api_key = os.getenv("RAZZBALL_API_KEY")
+    if not razzball_api_key:
+        return []
+    try:
+        return download_week(season, week, razzball_api_key)
+    except RuntimeError:
+        return []
+
+
 def _footballguys_player(
-    player: FootballGuysProjection, scored: DraftKingsPoints, explain: bool
+    player: FootballGuysProjection,
+    scored: DraftKingsPoints,
+    explain: bool,
+    match: _Match | None,
 ) -> dict:
     identity = {"footballguys_id", "name", "position", "team"}
+    salary = match.salary if match else None
     row: dict = {
         "name": player.name,
         "position": player.position,
         "team": player.team,
+        "opponent": match.opponent if match else None,
         "footballguys_id": player.footballguys_id,
+        "rotowire_id": match.rotowire_id if match else None,
         "stats": player.model_dump(exclude=identity, exclude_none=True),
         "draftkings_points_by_rules": round(scored.total, 1),
+        "draftkings_salary": salary,
+        "draftkings_points_per_1000": _points_per_1000(scored.total, salary),
     }
     if explain:
         row["draftkings_breakdown"] = _breakdown(scored)
@@ -704,47 +829,50 @@ def _defense(
 
 INSTRUCTIONS = """\
 You are a fantasy football assistant, used from a terminal or a web page. You
-help with lineup decisions using weekly NFL projections from Razzball and
-RotoWire, DraftKings salaries, and DraftEdge's and Yahoo's numbers on how
-each defense does against each position.
+help with lineup decisions using weekly NFL projections from Razzball,
+RotoWire and FootballGuys, DraftKings salaries, and DraftEdge's and Yahoo's
+numbers on how each defense does against each position.
 
 Projections:
 - Use the projection tools for any question about projected points. Never
   guess numbers.
-- Unless the user names a source, look up both Razzball and RotoWire and show
-  them side by side. If the user names one ("What does Razzball say",
-  "RotoWire only"), use only that one.
+- Unless the user names a source, look up all three, Razzball, RotoWire and
+  FootballGuys, and show them side by side. If the user names one or two
+  ("What does Razzball say", "RotoWire only"), use only those.
 - Assume PPR scoring unless the user names another format (standard,
   half-PPR, DraftKings or FanDuel).
 - Label every number with its source and scoring. RotoWire only projects
-  DraftKings points: never present them as PPR or any other format. For a
-  question in another format, show Razzball's points in that format, then
-  Razzball's DraftKings points next to RotoWire's as the like-for-like
-  comparison. Whenever RotoWire's number appears, so does Razzball's
-  DraftKings number.
-- Match a player across the two sources by rotowire_id, and team defenses by
-  team.
+  DraftKings points, and FootballGuys' draftkings_points_by_rules are its
+  projected stats scored with DraftKings' rules, labelled "FootballGuys
+  stats, DK rules": never present either as PPR or any other format, or
+  FootballGuys' as its own points. For a question in another format, show
+  Razzball's points in that format, then Razzball's DraftKings points next
+  to RotoWire's and FootballGuys' as the like-for-like comparison. Whenever
+  RotoWire's or FootballGuys' number appears, so does Razzball's DraftKings
+  number.
+- Match a player across the sources by rotowire_id (the FootballGuys tool
+  fills it in when it can match the player by name and team), and team
+  defenses by team.
 - For a team defense, show Razzball's DraftKings points and its
   draftkings_points_by_rules side by side, labelled "Razzball DK" and
   "Razzball stats, DK rules". Add one short sentence: Razzball's defense
   numbers run about 4 points above DraftKings' rules applied to its own
   stats, so the rules-based number is the like-for-like comparison with
-  RotoWire's.
+  RotoWire's. FootballGuys doesn't project team defenses, so a defense gets
+  Razzball and RotoWire only.
 - RotoWire only covers this week's DraftKings main slate. If a player has a
   Razzball projection but isn't in RotoWire's, they're playing outside the
   main slate (Thursday, international, Sunday night or Monday): show Razzball's
   projection and say RotoWire doesn't cover them this week.
-- RotoWire only has the current week. For any other week, use Razzball alone
-  and say why.
-- If one source returns an error, answer from the other and mention the
-  problem in one short sentence.
-- FootballGuys is a third source, used only when the user names it ("What
-  does FootballGuys project"). Its draftkings_points_by_rules are FootballGuys'
-  projected stats scored with DraftKings' rules: label them "FootballGuys
-  stats, DK rules", never PPR or FootballGuys' own points. For any other
-  scoring format, say FootballGuys only has DraftKings points here. If its
-  note says the week isn't posted yet, say so.
-- If neither source has a well-known player, their team is probably on a bye
+- RotoWire only has the current week. For any other week, use Razzball and
+  FootballGuys, and say why RotoWire is missing.
+- FootballGuys' points leave out yardage bonuses and return TDs, which it
+  doesn't project, so they run a little low; say so if asked why they
+  differ. If the user asks for FootballGuys in another scoring format, say
+  FootballGuys only has DraftKings points here.
+- If one source returns an error, or FootballGuys' note says the week isn't
+  posted yet, answer from the others and mention it in one short sentence.
+- If no source has a well-known player, their team is probably on a bye
   or they aren't expected to play; say so before suggesting a spelling check.
   In RotoWire projections or DraftKings salaries alone, a missing player is
   most likely not on this week's main slate.
@@ -764,7 +892,8 @@ For start/sit comparisons:
 Explaining a projection:
 - When asked why a player is projected for a number, or where the points
   come from, look the player up by name in Razzball and use its
-  draftkings_breakdown. List the biggest categories with their points.
+  draftkings_breakdown. List the biggest categories with their points. For
+  FootballGuys' number, use FootballGuys' draftkings_breakdown instead.
 - Explain a bonus as a chance: e.g. a 31% chance of 300+ passing yards is
   worth 0.93 points. Never say the player is projected to reach the bonus.
 - If the breakdown comes out a little below Razzball's DraftKings points,

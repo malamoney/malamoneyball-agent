@@ -1,6 +1,6 @@
 # Malamoneyball
 
-A fantasy football assistant that answers lineup questions from Razzball's weekly NFL projections, used from the terminal or a web page.
+A fantasy football assistant that answers lineup questions from Razzball's, RotoWire's and FootballGuys' weekly NFL projections, used from the terminal or a web page.
 
 ## Language
 

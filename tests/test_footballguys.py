@@ -19,7 +19,8 @@ import pytest
 import requests
 from agents.tool_context import ToolContext
 
-from malamoneyball_agent import assistant, footballguys, nfl_calendar
+from malamoneyball_agent import assistant, footballguys, nfl_calendar, rotowire
+from malamoneyball_agent.assistant import _player_key
 from malamoneyball_agent.footballguys import parse_csv
 from malamoneyball_agent.models import FootballGuysProjection
 
@@ -188,27 +189,45 @@ def test_a_player_without_a_stat_cell_has_none_for_it():
 
 
 @pytest.fixture
-def site(monkeypatch):
-    """A fake FootballGuys serving week 7, or `file` instead; set `.down` to fail."""
+def site(monkeypatch, fake_rotowire):
+    """A fake FootballGuys serving week 7, or `file` instead; set `.down` to fail.
+
+    RotoWire's main slate is served by `rotowire` (the real fixtures, unless
+    changed), and Razzball's week by `razzball`, a list of projection rows.
+    There's no Razzball key unless a test sets one.
+    """
 
     class Site:
         file = WEEK_7
         status = 200
         down: Exception | None = None
         urls: list[str] = []
+        rotowire = fake_rotowire
+        razzball: list[dict] | Exception = []
+        razzball_requests = 0
 
         @classmethod
-        def get(cls, url, **_kwargs):
+        def get(cls, url, *args, **kwargs):
+            if url in (rotowire.SLATE_LIST_URL, rotowire.PLAYERS_URL):
+                return cls.rotowire.get(url, *args, **kwargs)
+            response = requests.Response()
+            response.status_code = 200
+            if url.startswith("https://api.razzball.com/"):
+                cls.razzball_requests += 1
+                if isinstance(cls.razzball, Exception):
+                    raise cls.razzball
+                response._content = json.dumps({"projections": cls.razzball}).encode()
+                return response
             cls.urls.append(url)
             if cls.down:
                 raise cls.down
-            response = requests.Response()
             response.status_code = cls.status
             response._content = cls.file.encode()
             return response
 
     Site.urls = []
-    monkeypatch.setattr(footballguys.requests, "get", Site.get)
+    monkeypatch.delenv("RAZZBALL_API_KEY", raising=False)
+    monkeypatch.setattr(requests, "get", Site.get)
     return Site
 
 
@@ -339,3 +358,170 @@ def test_outside_the_season_nothing_is_downloaded(site, monkeypatch):
 
     assert call_tool({})["players"] == []
     assert site.urls == []
+
+
+# Matching to the other sources, for opponent, rotowire_id and salary.
+
+
+def razzball_row(name: str, position: str, team: str, opponent: str) -> dict:
+    return {
+        "rotowireid": "99",
+        "name": name,
+        "pos": position,
+        "team": team,
+        "opp": opponent,
+        **dict.fromkeys(
+            ["std_pts", "halfppr_pts", "ppr_pts", "dk_pts", "fd_pts"], "10"
+        ),
+    }
+
+
+def rotowire_player(name: str, team: str, opponent: str, rotowire_id: int) -> dict:
+    first, last = name.split(" ", 1)
+    gibbs: dict = json.loads((FIXTURES / "rotowire_players.json").read_text())[0]
+    return gibbs | {
+        "rwID": rotowire_id,
+        "firstName": first,
+        "lastName": last,
+        "team": {"abbr": team},
+        "opponent": {"team": opponent},
+    }
+
+
+def tool_player(name: str) -> dict:
+    players: list[dict] = call_tool({"player_name": name})["players"]
+    assert len(players) == 1
+    return players[0]
+
+
+@pytest.mark.parametrize(
+    ("ours", "theirs"),
+    [
+        (("Brian Robinson Jr", "ATL"), ("Brian Robinson", "ATL")),
+        (("Patrick Mahomes II", "KC"), ("Patrick Mahomes", "kc")),
+        (("Kevin Coleman Jr.", "MIA"), ("Kevin Coleman", "MIA")),
+        (("Wan'Dale Robinson", "TEN"), ("WanDale Robinson", "TEN")),
+        (("D.J. Moore", "CHI"), ("DJ Moore", "CHI")),
+        (("Travis Etienne", "JAC"), ("Travis Etienne", "JAX")),
+    ],
+)
+def test_names_and_teams_match_despite_small_differences(ours, theirs):
+    assert _player_key(*ours) == _player_key(*theirs)
+
+
+@pytest.mark.parametrize(
+    ("ours", "theirs"),
+    [
+        (("Brian Robinson", "ATL"), ("Bijan Robinson", "ATL")),
+        (("Brian Robinson", "ATL"), ("Brian Robinson", "WAS")),
+    ],
+)
+def test_different_players_dont_match(ours, theirs):
+    assert _player_key(*ours) != _player_key(*theirs)
+
+
+def test_a_main_slate_player_gets_rotowires_id_opponent_and_salary(week_7):
+    gibbs = tool_player("gibbs")
+
+    assert gibbs["rotowire_id"] == "16808"
+    assert gibbs["opponent"] == "GB"
+    assert gibbs["draftkings_salary"] == 9800
+    # 26.846 DraftKings points by rules for $9,800.
+    assert gibbs["draftkings_points_per_1000"] == 2.74
+
+
+def test_a_name_with_a_suffix_matches_rotowires(week_7):
+    week_7.rotowire.players.append(
+        rotowire_player("Patrick Mahomes", "KC", "LV", 11111)
+    )
+
+    mahomes = tool_player("mahomes")
+
+    assert (mahomes["rotowire_id"], mahomes["opponent"]) == ("11111", "LV")
+
+
+def test_a_player_off_the_main_slate_gets_his_opponent_from_razzball(
+    week_7, monkeypatch
+):
+    monkeypatch.setenv("RAZZBALL_API_KEY", "test-key")
+    week_7.razzball = [razzball_row("Malik Willis", "QB", "MIA", "BUF")]
+
+    willis = tool_player("willis")
+
+    assert willis["opponent"] == "BUF"
+    assert willis["rotowire_id"] == "99"
+    assert willis["draftkings_salary"] is None
+    assert willis["draftkings_points_per_1000"] is None
+
+
+def test_razzball_isnt_asked_when_everyone_is_on_the_main_slate(week_7, monkeypatch):
+    monkeypatch.setenv("RAZZBALL_API_KEY", "test-key")
+
+    tool_player("gibbs")
+
+    assert week_7.razzball_requests == 0
+
+
+@pytest.mark.parametrize("razzball", ["no key", "down"])
+def test_without_razzball_a_player_off_the_slate_stays_unmatched(
+    week_7, monkeypatch, razzball
+):
+    if razzball == "down":
+        monkeypatch.setenv("RAZZBALL_API_KEY", "test-key")
+        week_7.razzball = requests.ConnectionError("down")
+
+    willis = tool_player("willis")
+
+    assert willis["opponent"] is None
+    assert willis["rotowire_id"] is None
+    assert willis["draftkings_salary"] is None
+
+
+def test_without_rotowire_players_are_matched_to_razzball(week_7, monkeypatch):
+    monkeypatch.setenv("RAZZBALL_API_KEY", "test-key")
+    week_7.rotowire.slate_list = requests.ConnectionError("down")
+    week_7.razzball = [razzball_row("Jahmyr Gibbs", "RB", "DET", "GB")]
+
+    gibbs = tool_player("gibbs")
+
+    assert gibbs["opponent"] == "GB"
+    assert gibbs["draftkings_salary"] is None
+
+
+def test_another_week_has_no_salaries_or_rotowire(week_7, monkeypatch):
+    monkeypatch.setenv("RAZZBALL_API_KEY", "test-key")
+    week_7.razzball = [razzball_row("Jahmyr Gibbs", "RB", "DET", "TB")]
+
+    (gibbs,) = call_tool({"week": "6", "player_name": "gibbs"})["players"]
+
+    assert week_7.rotowire.requests_made == 0
+    assert gibbs["opponent"] == "TB"
+    assert gibbs["draftkings_salary"] is None
+
+
+def test_two_rotowire_players_with_the_same_name_and_team_match_neither(week_7):
+    week_7.rotowire.players.append(rotowire_player("Jahmyr Gibbs", "DET", "GB", 2))
+
+    gibbs = tool_player("gibbs")
+
+    assert gibbs["rotowire_id"] is None
+    assert gibbs["draftkings_salary"] is None
+
+
+def test_two_footballguys_players_with_the_same_name_and_team_match_neither(
+    week_7,
+):
+    text = edited("RobiBi01", "77936", "name", "Jahmyr Gibbs")
+    week_7.file = edited("RobiBi01", "77936", "team", "DET", text)
+
+    players = call_tool({"player_name": "gibbs"})["players"]
+
+    assert len(players) == 2
+    assert all(player["rotowire_id"] is None for player in players)
+
+
+def test_the_tool_description_says_how_players_are_matched():
+    description = assistant.fetch_footballguys_projections.description
+
+    assert "matched by name and team" in description
+    assert "draftkings_points_per_1000" in description
