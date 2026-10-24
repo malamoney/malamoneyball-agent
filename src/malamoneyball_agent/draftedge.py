@@ -1,16 +1,15 @@
-"""DraftEdge's NFL Defense vs Position tables: download, cache and parse.
+"""DraftEdge's NFL Defense vs Position tables: download, save and parse.
 
 DraftEdge has no API; its Defense vs Position page is server-rendered HTML,
 one table per offensive position, and needs no key. Each table has one row
-per defense: the DraftKings and FanDuel points it allows per game to that
-position, and the stats behind them.
+per defense. Only the DraftKings points it allowed per game to that position
+this season, and over its last 4 games, are read.
 
-DraftEdge blends this season with last season: "DK FPA" and the per-game
-stats mix this season's games (season to date plus the last-4 average) with
-last season's, 50/50 after 4 games and mostly this season by midseason.
-The stats were checked against the points on 2026-10-23: they track the
-blended points, not this season's. Only the "this season" column is this
-season alone.
+The page's other numbers aren't: its rank, DK FPA, FD FPA, vs Avg and the
+per-game stats blend this season with last season, and last season's
+points and the trend aren't used. The stats against each position come from
+Yahoo instead (see yahoo.py). Only the columns read are checked, so a change
+to any other column doesn't break reading.
 
 Each table that downloads and reads cleanly is saved in the data folder and
 reused for 12 hours, across restarts. If a later download fails, the saved
@@ -19,14 +18,13 @@ numbers when DraftEdge is down or its page changes.
 """
 
 import math
-import re
-from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 
 import requests
 from bs4 import BeautifulSoup, Tag
 
 from malamoneyball_agent import saved_pages
+from malamoneyball_agent.models import DraftEdgeDefense, DraftEdgePointsAllowed
 
 PAGE_URL = "https://draftedge.com/nfl/nfl-defense-vs-pos/"
 POSITIONS = ("QB", "RB", "WR", "TE")
@@ -37,44 +35,16 @@ POSITIONS = ("QB", "RB", "WR", "TE")
 # copy saved just before DraftEdge updates is still fixed the same day.
 CACHE_LIFETIME = timedelta(hours=12)
 SAVED_FOLDER = "draftedge"
-_cache: dict[str, DefenseVsPosition] = {}
+_cache: dict[tuple[int, str], DraftEdgePointsAllowed] = {}
 
 
 def _now() -> datetime:
     return datetime.now(UTC)
 
 
-# Column headings, and the names the tool uses for them. Every heading must be
-# there, and no others, so a renamed or added column fails loudly rather than
-# reading numbers from the wrong one.
-_POINTS = {
-    "DK FPA": "draftkings_points",
-    "FD FPA": "fanduel_points",
-    "vs Avg": "vs_league_average",
-    "L4": "last_4_games_points",
-}
-_RECEIVING = {"Targets": "targets", "Rec": "receptions", "Rec Yds": "receiving_yards"}
-STATS: dict[str, dict[str, str]] = {
-    "QB": {
-        "Pass Yds": "passing_yards",
-        "Pass TD": "passing_touchdowns",
-        "INT": "interceptions",
-        "Sacks": "sacks",
-        "QB Rush Yds": "rushing_yards",
-    },
-    "RB": {"Rush Yds": "rushing_yards", "Rush TD": "rushing_touchdowns", **_RECEIVING},
-    "WR": {
-        **_RECEIVING,
-        "Rec TD": "receiving_touchdowns",
-        "20+ Rec": "receptions_20_plus_yards",
-    },
-    "TE": {
-        **_RECEIVING,
-        "Rec TD": "receiving_touchdowns",
-        "20+ Rec": "receptions_20_plus_yards",
-    },
-}
-_SEASON_HEADING = re.compile(r"(\d{4}-\d{2})/G")
+# The last 4 games' column. This season's is named after it, e.g. "2026-27/G"
+# for the season starting in 2026.
+_LAST_4_GAMES = "L4"
 
 # Abbreviations the projections spell differently from DraftEdge, checked
 # against live data on 2026-10-23: Razzball and RotoWire call the Rams LAR,
@@ -85,69 +55,36 @@ _RENAMED = {"LA": "LAR"}
 TEAM_ALIASES = {"LA": "LAR", "JAC": "JAX"}
 
 
-@dataclass(frozen=True)
-class DefenseRow:
-    """One defense against one position, per game.
+def download_position(season: int, position: str) -> DraftEdgePointsAllowed:
+    """Return every defense's points allowed to position (QB, RB, WR or TE).
 
-    draftkings_points, fanduel_points and stats are DraftEdge's blend of this
-    season and last; the other points are DraftKings points for one stretch
-    of games. vs_league_average compares draftkings_points with the league's.
-    Rank 1 allows the fewest DraftKings points: the toughest matchup.
-    """
-
-    rank: int
-    team: str
-    team_name: str
-    draftkings_points: float | None
-    fanduel_points: float | None
-    vs_league_average: float | None
-    this_season_points: float | None
-    last_season_points: float | None
-    last_4_games_points: float | None
-    stats: dict[str, float | None]
-    trend: str | None
-
-
-@dataclass(frozen=True)
-class DefenseVsPosition:
-    """One position's table. stale_reason says why a saved copy was used."""
-
-    position: str
-    last_season: str
-    this_season: str
-    defenses: list[DefenseRow]
-    downloaded_at: datetime
-    stale_reason: str | None = None
-
-
-def download_position(position: str) -> DefenseVsPosition:
-    """Return every defense's numbers against position (QB, RB, WR or TE).
-
-    Served from the copy in memory or saved on disk when it's under 12 hours
-    old. If downloading fails, a saved copy of any age is returned instead,
-    with stale_reason set; with no saved copy, the error is raised.
+    season is the NFL season the "this season" column must be for. Served
+    from the copy in memory or saved on disk when it's under 12 hours old.
+    If downloading fails, a saved copy of any age is returned instead, with
+    stale_reason set; with no saved copy, the error is raised.
     """
     position = position.upper()
     if position not in POSITIONS:
         raise ValueError(f"Position must be QB, RB, WR or TE, not {position!r}.")
-    saved = _cache.get(position) or _load(position)
+    key = (season, position)
+    saved = _cache.get(key) or _load(season, position)
     if saved:
-        _cache[position] = saved
+        _cache[key] = saved
         if _now() - saved.downloaded_at < CACHE_LIFETIME:
             return saved
 
     try:
         html = _download(position)
-        table = parse_table(html, position, downloaded_at=_now())
+        table = parse_table(html, season, position, downloaded_at=_now())
     except RuntimeError as error:
         if saved is None:
             raise
-        return replace(saved, stale_reason=str(error))
+        return saved.model_copy(update={"stale_reason": str(error)})
 
     # Only a table that read cleanly is saved, so a changed page never
     # replaces a good copy.
     saved_pages.save(SAVED_FOLDER, position.lower(), html, table.downloaded_at)
-    _cache[position] = table
+    _cache[key] = table
     return table
 
 
@@ -161,23 +98,25 @@ def _download(position: str) -> str:
     return response.text
 
 
-def _load(position: str) -> DefenseVsPosition | None:
+def _load(season: int, position: str) -> DraftEdgePointsAllowed | None:
+    # One file per position: a copy from an earlier season has no column for
+    # this one, so it doesn't read and counts as none.
     saved = saved_pages.load(SAVED_FOLDER, position.lower())
     if saved is None:
         return None
     html, downloaded_at = saved
     try:
-        return parse_table(html, position, downloaded_at=downloaded_at)
+        return parse_table(html, season, position, downloaded_at=downloaded_at)
     except RuntimeError:
         return None  # A page that no longer reads is the same as none.
 
 
-def this_season_ranks(defenses: list[DefenseRow]) -> dict[str, int]:
+def this_season_ranks(defenses: list[DraftEdgeDefense]) -> dict[str, int]:
     """Each defense's rank by DraftKings points allowed this season alone.
 
     Rank 1 allows the fewest, the toughest matchup. DraftEdge's own rank is
-    by its blended points, so it can't be used for this season. Tied
-    defenses share a rank; a defense with no number this season has none.
+    by its blended points, so it isn't used. Tied defenses share a rank; a
+    defense with no number this season has none.
     """
     points = sorted(
         d.this_season_points for d in defenses if d.this_season_points is not None
@@ -190,8 +129,8 @@ def this_season_ranks(defenses: list[DefenseRow]) -> dict[str, int]:
 
 
 def parse_table(
-    html: str, position: str, downloaded_at: datetime | None = None
-) -> DefenseVsPosition:
+    html: str, season: int, position: str, downloaded_at: datetime | None = None
+) -> DraftEdgePointsAllowed:
     """Read one position's table from DraftEdge's page."""
     table = BeautifulSoup(html, "html.parser").select_one("table#dvp-table")
     if table is None:
@@ -200,27 +139,27 @@ def parse_table(
             "have changed."
         )
 
+    # Each column read is found by its heading, which must appear exactly
+    # once; the other columns can change freely.
+    this_season = f"{season}-{(season + 1) % 100:02d}/G"
     headings = [_text(th) for th in table.select("thead th")]
-    seasons = sorted(
-        match[1] for h in headings if (match := _SEASON_HEADING.fullmatch(h))
-    )
-    expected = {"Rank", "Team", "Trend", *_POINTS, *STATS[position]}
-    if (
-        len(seasons) != 2
-        or len(headings) != len(set(headings))
-        or set(headings) - {f"{s}/G" for s in seasons} != expected
-    ):
+    missing = [
+        heading
+        for heading in ["Team", this_season, _LAST_4_GAMES]
+        if headings.count(heading) != 1
+    ]
+    if missing:
         raise RuntimeError(
-            f"DraftEdge's {position} table has unexpected columns "
-            f"({', '.join(headings)}); the page may have changed."
+            f"DraftEdge's {position} table doesn't have exactly one "
+            f"{', '.join(missing)} column ({', '.join(headings)}); the page may "
+            "have changed."
         )
-    last_season, this_season = seasons
 
     defenses = []
     for number, tr in enumerate(table.select("tbody tr"), start=1):
         try:
-            defenses.append(_row(tr, headings, position, last_season, this_season))
-        except (ValueError, KeyError) as error:
+            defenses.append(_row(tr, headings, this_season))
+        except ValueError as error:
             raise RuntimeError(
                 f"DraftEdge's {position} table has a row that can't be read "
                 f"(row {number}: {error})."
@@ -230,14 +169,15 @@ def parse_table(
     if len({d.team for d in defenses}) != len(defenses):
         raise RuntimeError(f"DraftEdge's {position} table lists a team twice.")
 
-    return DefenseVsPosition(
-        position, last_season, this_season, defenses, downloaded_at or _now()
+    return DraftEdgePointsAllowed(
+        position=position,
+        season=season,
+        defenses=defenses,
+        downloaded_at=downloaded_at or _now(),
     )
 
 
-def _row(
-    tr: Tag, headings: list[str], position: str, last_season: str, this_season: str
-) -> DefenseRow:
+def _row(tr: Tag, headings: list[str], this_season: str) -> DraftEdgeDefense:
     cells = tr.find_all("td", recursive=False)
     if len(cells) != len(headings):
         raise ValueError(f"{len(cells)} cells for {len(headings)} columns")
@@ -248,20 +188,12 @@ def _row(
     abbreviation = team.select_one(".dvp-team-abbr")
     if name is None or abbreviation is None:
         raise ValueError("no team name or abbreviation")
-    trend = by_heading["Trend"].select_one("title")
 
-    return DefenseRow(
-        rank=int(_text(by_heading["Rank"])),
+    return DraftEdgeDefense(
         team=_RENAMED.get(_text(abbreviation), _text(abbreviation)),
         team_name=_text(name),
-        **{field: _number(by_heading[heading]) for heading, field in _POINTS.items()},
-        last_season_points=_number(by_heading[f"{last_season}/G"]),
-        this_season_points=_number(by_heading[f"{this_season}/G"]),
-        stats={
-            field: _number(by_heading[heading])
-            for heading, field in STATS[position].items()
-        },
-        trend=_text(trend) if trend else None,
+        this_season_points=_number(by_heading[this_season]),
+        last_4_games_points=_number(by_heading[_LAST_4_GAMES]),
     )
 
 

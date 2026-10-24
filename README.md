@@ -121,8 +121,7 @@ Good to know:
   The DraftKings points a defense has allowed to a position come from
   DraftEdge, and answers rank defenses by them: 1 is the toughest to face,
   32 the softest. The stats behind them (yards, touchdowns, targets and so
-  on) come from Yahoo. DraftEdge's other numbers blend this season with last
-  season, so answers don't use them. Both come from public pages, DraftEdge's
+  on) come from Yahoo. Both come from public pages, DraftEdge's
   Defense vs Position and Yahoo's points against, which aren't APIs, so they
   may change without notice. If one can't be read, answers use the other and
   say what's missing.

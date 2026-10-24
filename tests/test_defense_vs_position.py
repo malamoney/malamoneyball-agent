@@ -24,8 +24,7 @@ def test_returns_every_number_for_a_defense(fake_draftedge):
     output = fake_draftedge({"position": "RB", "team": "JAX"})
 
     assert output["position"] == "RB"
-    assert output["this_season"] == "2026-27"
-    assert output["last_season"] == "2025-26"
+    assert output["season"] == "2026-27"
     assert output["defenses"] == [
         {
             "team": "JAX",
@@ -42,14 +41,6 @@ def test_returns_every_number_for_a_defense(fake_draftedge):
                 "receiving_yards": 38.3,
                 "receiving_touchdowns": 0.0,
                 "fumbles_lost": 0.0,
-            },
-            "draftkings_points_last_season": 18.4,
-            "trend": "Stable",
-            "blended": {
-                "rank": 1,
-                "draftkings_points": 17.6,
-                "fanduel_points": 15.0,
-                "vs_league_average": -4.7,
             },
         }
     ]
@@ -153,13 +144,13 @@ def test_most_rushing_yards_allowed_to_running_backs_this_season(fake_draftedge)
     assert yards[:3] == [116.8, 113.7, 107.8]
 
 
-def test_sorts_by_blended_points(fake_draftedge):
+def test_sorts_by_the_last_4_games(fake_draftedge):
     output = fake_draftedge(
-        {"position": "TE", "sort_by": "draftkings_points_blended", "limit": 2}
+        {"position": "TE", "sort_by": "draftkings_points_last_4_games", "limit": 8}
     )
 
-    # This season alone, KC is the 2nd softest; blended, CIN is.
-    assert teams(output) == ["DET", "CIN"]
+    points = [d["draftkings_points_last_4_games"] for d in output["defenses"]]
+    assert points == sorted(points, reverse=True)
 
 
 @pytest.mark.parametrize(
@@ -274,7 +265,6 @@ def test_draftedge_failing_still_gives_yahoos_stats(fake_draftedge):
 
     assert output["sources"]["draftedge"] == {"error": "DraftEdge returned HTTP 503."}
     assert output["defenses"][0]["draftkings_points_this_season"] is None
-    assert output["defenses"][0]["blended"] is None
     assert output["defenses"][0]["stats_per_game"]["rushing_yards"] == 116.8
 
 
@@ -315,23 +305,50 @@ def draftedge_error(fake_draftedge, position: str) -> str:
     return error
 
 
-def test_a_renamed_column_is_reported(fake_draftedge):
-    fake_draftedge.pages["RB"] = fake_draftedge.pages["RB"].replace(
-        ">Rush Yds<", ">Rushing Yards<"
-    )
+def test_columns_that_arent_read_can_change(fake_draftedge):
+    page = fake_draftedge.pages["RB"]
+    assert isinstance(page, str)
+    for old, new in [
+        (">Rush Yds<", ">Rushing Yards<"),
+        (">DK FPA<", ">DK Points<"),
+        (">2025-26/G<", ">Last Season<"),
+        (">Trend<", ">Form<"),
+    ]:
+        page = page.replace(old, new)
+    fake_draftedge.pages["RB"] = page
+
+    output = fake_draftedge({"position": "RB", "team": "JAX"})
+
+    assert output["defenses"][0]["draftkings_points_this_season"] == 17.3
+    assert output["defenses"][0]["draftkings_points_last_4_games"] == 17.0
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "missing"),
+    [
+        (">L4<", ">Last 4<", "L4"),
+        (">2026-27/G<", ">This Season<", "2026-27/G"),
+        (">Rush Yds<", ">L4<", "L4"),  # twice
+        (">Team<", ">Defense<", "Team"),
+    ],
+)
+def test_a_column_that_is_read_must_be_there_once(fake_draftedge, old, new, missing):
+    page = fake_draftedge.pages["RB"]
+    assert isinstance(page, str)
+    fake_draftedge.pages["RB"] = page.replace(old, new, 1)
 
     error = draftedge_error(fake_draftedge, "RB")
 
-    assert "DraftEdge's RB table has unexpected columns" in error
-    assert "Rushing Yards" in error
+    assert f"DraftEdge's RB table doesn't have exactly one {missing} column" in error
 
 
-def test_an_added_column_is_reported(fake_draftedge):
-    fake_draftedge.pages["QB"] = fake_draftedge.pages["QB"].replace(
-        "<th>Rank</th>", "<th>Rank</th><th>Snaps</th>"
-    )
+def test_a_page_from_another_season_isnt_read(fake_draftedge, monkeypatch):
+    # In the 2027 season, a 2026-27 column is last season's.
+    monkeypatch.setattr(nfl_calendar, "_today", lambda: date(2027, 10, 22))
 
-    assert "unexpected columns" in draftedge_error(fake_draftedge, "QB")
+    error = draftedge_error(fake_draftedge, "RB")
+
+    assert "exactly one 2027-28/G column" in error
 
 
 def test_a_row_with_a_missing_cell_is_reported(fake_draftedge):
@@ -381,18 +398,18 @@ PARAMETERS = fetch_defense_vs_position.params_json_schema["properties"]
 DESCRIPTION = " ".join(fetch_defense_vs_position.description.split())
 
 
-def test_description_says_what_is_this_season_alone():
+def test_description_says_every_number_is_this_seasons():
     assert (
-        "This season alone: draftkings_points_this_season, rank_this_season, "
-        "draftkings_points_last_4_games and every stat in stats_per_game"
+        "Every number is this season's: draftkings_points_this_season, "
+        "draftkings_points_last_4_games (its last 4 games) and every stat in "
+        "stats_per_game"
     ) in DESCRIPTION
 
 
-def test_description_says_what_is_blended_and_not_to_judge_by_it():
-    assert "Everything under blended mixes this season's games with last" in (
-        DESCRIPTION
-    )
-    assert "Don't use it to judge a matchup" in DESCRIPTION
+def test_nothing_mentions_blended_numbers():
+    assert "blend" not in DESCRIPTION.lower()
+    assert "blend" not in str(PARAMETERS).lower()
+    assert "blend" not in INSTRUCTIONS.lower()
 
 
 def test_description_says_which_way_the_ranks_run():
@@ -421,9 +438,8 @@ def test_sort_by_lists_every_stat():
 def test_instructions_say_only_this_season_counts():
     text = " ".join(INSTRUCTIONS.split())
 
-    assert "Only this season counts" in text
+    assert "Every number is this season's" in text
     assert "draftkings_points_this_season, rank_this_season and its stats_per_game" in (
         text
     )
-    assert "Never use anything under blended" in text
     assert "Rank 1 is the toughest matchup" in text

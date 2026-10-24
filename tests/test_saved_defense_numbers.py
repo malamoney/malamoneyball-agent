@@ -1,11 +1,13 @@
 import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 import requests
 
 from malamoneyball_agent import draftedge
 
+FIXTURES = Path(__file__).parent / "fixtures"
 TUESDAY = datetime(2026, 10, 27, 9, 0, tzinfo=UTC)
 
 
@@ -84,7 +86,7 @@ def test_each_position_is_saved_separately(fake_draftedge, clock, data_dir):
 def renamed_column(fake_draftedge):
     page = fake_draftedge.pages["RB"]
     assert isinstance(page, str)
-    return page.replace(">Rush Yds<", ">Rushing Yards<")
+    return page.replace(">L4<", ">Last 4<")
 
 
 @pytest.mark.parametrize(
@@ -92,7 +94,7 @@ def renamed_column(fake_draftedge):
     [
         ("unreachable", "Could not reach DraftEdge"),
         ("http_error", "DraftEdge returned HTTP 503"),
-        ("changed_page", "unexpected columns"),
+        ("changed_page", "exactly one L4 column"),
     ],
 )
 def test_a_failed_download_uses_the_saved_copy_marked_stale(
@@ -207,3 +209,24 @@ def test_the_description_and_instructions_cover_stale_numbers():
     assert "its last saved copy is used" in description
     assert "when its numbers were downloaded (local time)" in description
     assert "If a source in sources is stale" in " ".join(INSTRUCTIONS.split())
+
+
+def test_a_copy_saved_before_only_the_points_were_read_still_loads(
+    fake_draftedge, clock, data_dir
+):
+    # What the version reading every column saved: the whole page.
+    path = saved_file(data_dir)
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        json.dumps(
+            {
+                "downloaded_at": TUESDAY.isoformat(),
+                "html": (FIXTURES / "draftedge_rb.html").read_text(),
+            }
+        )
+    )
+
+    output = fake_draftedge({"position": "RB", "team": "JAX"})
+
+    assert fake_draftedge.requests_made == 0
+    assert output["defenses"][0]["draftkings_points_this_season"] == 17.3

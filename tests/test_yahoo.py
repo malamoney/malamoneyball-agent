@@ -67,7 +67,9 @@ def test_yahoos_own_points_are_not_read():
 
 
 def test_teams_match_draftedges_abbreviations():
-    edge = parse_draftedge((FIXTURES / "draftedge_qb_all_teams.html").read_text(), "QB")
+    edge = parse_draftedge(
+        (FIXTURES / "draftedge_qb_all_teams.html").read_text(), 2026, "QB"
+    )
     table = read(page("QB"), "QB")
 
     assert {(d.team, d.team_name) for d in table.defenses} == {
