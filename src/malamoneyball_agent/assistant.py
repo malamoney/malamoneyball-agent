@@ -5,9 +5,9 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from agents import Agent, function_tool
+from agents import Agent, RunContextWrapper, function_tool
 
-from malamoneyball_agent import draftedge, footballguys, yahoo
+from malamoneyball_agent import draftedge, footballguys, nfl_calendar, yahoo
 from malamoneyball_agent.draftedge import TEAM_ALIASES, this_season_ranks
 from malamoneyball_agent.draftkings_lineup import (
     SALARY_CAP,
@@ -833,6 +833,15 @@ help with lineup decisions using weekly NFL projections from Razzball,
 RotoWire and FootballGuys, DraftKings salaries, and DraftEdge's and Yahoo's
 numbers on how each defense does against each position.
 
+Weeks:
+- The last line of these instructions gives today's date and the current
+  NFL week. "This week" means the current week.
+- For "next week", "last week" or any other week, work out its number from
+  the current week and pass it to the projection tools. Before week 1 or
+  after week 18 there are no regular-season projections: say so instead of
+  looking any up.
+- Whenever you show projections, say which week they're for.
+
 Projections:
 - Use the projection tools for any question about projected points. Never
   guess numbers.
@@ -965,11 +974,37 @@ Keep answers short. A small table works well for side-by-side numbers.
 """
 
 
+def instructions(_context: RunContextWrapper | None, _agent: Agent | None) -> str:
+    """The instructions, ending with today's date and NFL week.
+
+    Built when each Answer starts, so a Conversation picked up days later
+    gets the date it's answered on, not the one it began on.
+    """
+    return f"{INSTRUCTIONS}\n{today_line()}\n"
+
+
+def today_line() -> str:
+    """Today's date, NFL season and week, from the calendar the tools use."""
+    today = nfl_calendar._today()
+    season = get_nfl_season(today)
+    week = get_nfl_week(today)
+    date_text = f"{today:%A, %B} {today.day}, {today.year}"
+    if week is None:
+        return (
+            f"Today is {date_text} (US Eastern). It's the {season} NFL season, "
+            "but its regular season (weeks 1 to 18) isn't under way, so there's "
+            "no current week."
+        )
+    return (
+        f"Today is {date_text} (US Eastern). It's the {season} NFL season, week {week}."
+    )
+
+
 def build_agent() -> Agent:
     """Build the assistant, using the model named by OPENAI_MODEL if set."""
     return Agent(
         name="Fantasy football assistant",
-        instructions=INSTRUCTIONS,
+        instructions=instructions,
         model=os.getenv("OPENAI_MODEL") or DEFAULT_MODEL,
         tools=[
             fetch_razzball_projections,
