@@ -204,3 +204,37 @@ class RotoWirePlayer(BaseModel):
     @property
     def name(self) -> str:
         return f"{self.firstName} {self.lastName}"
+
+
+class YahooDefenseStats(BaseModel):
+    """One defense against one position this season, per game, from Yahoo.
+
+    Everything the players at that position did against it, per game played,
+    this season alone. team is the abbreviation the projections use.
+    """
+
+    team: str
+    team_name: str
+    passing_yards: float | None
+    passing_touchdowns: float | None
+    interceptions: float | None
+    rushing_attempts: float | None
+    rushing_yards: float | None
+    rushing_touchdowns: float | None
+    receptions: float | None
+    receiving_yards: float | None
+    receiving_touchdowns: float | None
+    targets: float | None
+    return_touchdowns: float | None
+    two_point_conversions: float | None
+    fumbles_lost: float | None
+
+
+class YahooPointsAgainst(BaseModel):
+    """One position's table from Yahoo. stale_reason says why a saved copy was used."""
+
+    position: str
+    season: int
+    defenses: list[YahooDefenseStats]
+    downloaded_at: datetime
+    stale_reason: str | None = None

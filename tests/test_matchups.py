@@ -93,7 +93,11 @@ def test_the_full_table_has_32_defenses(every_defense):
 def test_every_opponent_in_the_projections_finds_its_defense(every_defense, team):
     output = every_defense({"position": "QB", "team": team})
 
+    # One defense, with DraftEdge's points and Yahoo's stats joined.
     assert len(output["defenses"]) == 1
+    defense = output["defenses"][0]
+    assert defense["draftkings_points_this_season"] is not None
+    assert defense["stats_per_game"] is not None
 
 
 def test_razzballs_32_teams_find_32_different_defenses(every_defense):
@@ -136,15 +140,20 @@ def test_comparisons_look_up_each_opponent_at_the_players_position():
     assert "at that player's position" in TEXT
 
 
-def test_matchups_give_only_this_seasons_points_and_rank():
-    assert "Give only this season's numbers" in TEXT
+def test_matchups_give_only_this_seasons_numbers():
+    assert "Give this season's numbers only" in TEXT
     assert "(draftkings_points_this_season)" in TEXT
     assert "(rank_this_season)" in TEXT
 
 
+def test_each_position_gets_its_own_stats():
+    assert "passing yards and passing TDs for QBs" in TEXT
+    assert "rushing yards and rushing TDs for RBs" in TEXT
+    assert "receiving yards and targets for WRs and TEs" in TEXT
+
+
 def test_matchups_never_give_blended_numbers():
-    assert "Never give blended numbers when evaluating players" in TEXT
-    assert "any stat in stats_per_game" in TEXT
+    assert "Never give blended numbers" in TEXT
 
 
 def test_a_matchup_doesnt_overrule_a_clearly_better_projection():

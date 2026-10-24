@@ -18,17 +18,15 @@ copy is used however old it is, marked stale, so matchup questions still get
 numbers when DraftEdge is down or its page changes.
 """
 
-import json
 import math
 import re
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup, Tag
 
-from malamoneyball_agent.conversations import data_dir
+from malamoneyball_agent import saved_pages
 
 PAGE_URL = "https://draftedge.com/nfl/nfl-defense-vs-pos/"
 POSITIONS = ("QB", "RB", "WR", "TE")
@@ -148,7 +146,7 @@ def download_position(position: str) -> DefenseVsPosition:
 
     # Only a table that read cleanly is saved, so a changed page never
     # replaces a good copy.
-    _save(position, html, table.downloaded_at)
+    saved_pages.save(SAVED_FOLDER, position.lower(), html, table.downloaded_at)
     _cache[position] = table
     return table
 
@@ -163,33 +161,15 @@ def _download(position: str) -> str:
     return response.text
 
 
-def _saved_file(position: str) -> Path:
-    return data_dir() / SAVED_FOLDER / f"{position.lower()}.json"
-
-
-def _save(position: str, html: str, downloaded_at: datetime) -> None:
-    path = _saved_file(position)
-    saved = {"downloaded_at": downloaded_at.isoformat(), "html": html}
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        # Written aside and then moved, so a crash never leaves half a file.
-        partial = path.with_suffix(".partial")
-        partial.write_text(json.dumps(saved), encoding="utf-8")
-        partial.replace(path)
-    except OSError:
-        pass  # Not being able to save only means downloading again next time.
-
-
 def _load(position: str) -> DefenseVsPosition | None:
-    # A missing, unreadable or no-longer-parsing file is the same as none.
-    try:
-        saved = json.loads(_saved_file(position).read_text(encoding="utf-8"))
-        downloaded_at = datetime.fromisoformat(saved["downloaded_at"])
-        if downloaded_at.tzinfo is None:
-            return None
-        return parse_table(saved["html"], position, downloaded_at=downloaded_at)
-    except OSError, ValueError, KeyError, TypeError, RuntimeError:
+    saved = saved_pages.load(SAVED_FOLDER, position.lower())
+    if saved is None:
         return None
+    html, downloaded_at = saved
+    try:
+        return parse_table(html, position, downloaded_at=downloaded_at)
+    except RuntimeError:
+        return None  # A page that no longer reads is the same as none.
 
 
 def this_season_ranks(defenses: list[DefenseRow]) -> dict[str, int]:

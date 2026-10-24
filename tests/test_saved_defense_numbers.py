@@ -46,7 +46,7 @@ def test_a_restart_within_12_hours_downloads_nothing(fake_draftedge, clock):
 
     assert fake_draftedge.requests_made == 1
     assert output["defenses"][0]["draftkings_points_this_season"] == 17.3
-    assert output["stale"] is False
+    assert output["sources"]["draftedge"]["stale"] is False
 
 
 def test_after_12_hours_it_downloads_again_and_replaces_the_copy(
@@ -110,18 +110,24 @@ def test_a_failed_download_uses_the_saved_copy_marked_stale(
 
     output = fake_draftedge({"position": "RB", "team": "JAX"})
 
-    assert output["stale"] is True
-    assert reason in output["stale_reason"]
-    assert datetime.fromisoformat(output["downloaded_at"]) == TUESDAY
+    assert output["sources"]["draftedge"]["stale"] is True
+    assert reason in output["sources"]["draftedge"]["stale_reason"]
+    assert (
+        datetime.fromisoformat(output["sources"]["draftedge"]["downloaded_at"])
+        == TUESDAY
+    )
     assert output["defenses"][0]["draftkings_points_this_season"] == 17.3
 
 
 def test_a_fresh_result_says_when_it_was_downloaded(fake_draftedge, clock):
     output = fake_draftedge({"position": "RB"})
 
-    assert datetime.fromisoformat(output["downloaded_at"]) == TUESDAY
-    assert output["stale"] is False
-    assert output["stale_reason"] is None
+    assert (
+        datetime.fromisoformat(output["sources"]["draftedge"]["downloaded_at"])
+        == TUESDAY
+    )
+    assert output["sources"]["draftedge"]["stale"] is False
+    assert output["sources"]["draftedge"]["stale_reason"] is None
 
 
 def test_a_changed_page_never_replaces_a_good_copy(fake_draftedge, clock, data_dir):
@@ -135,10 +141,16 @@ def test_a_changed_page_never_replaces_a_good_copy(fake_draftedge, clock, data_d
     assert saved_file(data_dir).read_text() == good
 
 
-def test_with_no_saved_copy_a_failure_is_reported_as_before(fake_draftedge, clock):
+def test_with_no_saved_copy_a_failure_is_reported_with_yahoos_stats(
+    fake_draftedge, clock
+):
     fake_draftedge.pages["RB"] = requests.ConnectionError("down")
 
-    assert "Could not reach DraftEdge" in fake_draftedge({"position": "RB"})
+    output = fake_draftedge({"position": "RB", "team": "JAX"})
+
+    assert "Could not reach DraftEdge" in output["sources"]["draftedge"]["error"]
+    assert output["defenses"][0]["draftkings_points_this_season"] is None
+    assert output["defenses"][0]["stats_per_game"]["rushing_yards"] == 51.5
 
 
 @pytest.mark.parametrize(
@@ -162,7 +174,7 @@ def test_a_corrupt_saved_file_means_downloading_again(
     output = fake_draftedge({"position": "RB"})
 
     assert fake_draftedge.requests_made == 1
-    assert output["stale"] is False
+    assert output["sources"]["draftedge"]["stale"] is False
     assert json.loads(path.read_text())["downloaded_at"] == TUESDAY.isoformat()
 
 
@@ -174,7 +186,9 @@ def test_a_corrupt_saved_file_and_a_failed_download_report_the_failure(
     path.write_text("not json")
     fake_draftedge.status = 503
 
-    assert "DraftEdge returned HTTP 503" in fake_draftedge({"position": "RB"})
+    output = fake_draftedge({"position": "RB"})
+
+    assert "DraftEdge returned HTTP 503" in output["sources"]["draftedge"]["error"]
 
 
 def test_a_folder_that_cant_be_written_still_answers(fake_draftedge, clock, data_dir):
@@ -190,6 +204,6 @@ def test_the_description_and_instructions_cover_stale_numbers():
     from malamoneyball_agent.assistant import INSTRUCTIONS, fetch_defense_vs_position
 
     description = " ".join(fetch_defense_vs_position.description.split())
-    assert "the last saved copy is used instead" in description
-    assert "downloaded_at (local time) says how old the numbers are" in description
-    assert "If the result is stale" in " ".join(INSTRUCTIONS.split())
+    assert "its last saved copy is used" in description
+    assert "when its numbers were downloaded (local time)" in description
+    assert "If a source in sources is stale" in " ".join(INSTRUCTIONS.split())

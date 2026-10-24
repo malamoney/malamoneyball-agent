@@ -5,11 +5,11 @@ from collections.abc import Callable
 
 from agents import Agent, function_tool
 
+from malamoneyball_agent import draftedge, yahoo
 from malamoneyball_agent.draftedge import (
-    STATS,
     TEAM_ALIASES,
     DefenseRow,
-    download_position,
+    DefenseVsPosition,
     this_season_ranks,
 )
 from malamoneyball_agent.draftkings_lineup import (
@@ -18,7 +18,12 @@ from malamoneyball_agent.draftkings_lineup import (
     check_lineup,
 )
 from malamoneyball_agent.draftkings_scoring import draftkings_points
-from malamoneyball_agent.models import NFLPlayerProjection, RotoWirePlayer
+from malamoneyball_agent.models import (
+    NFLPlayerProjection,
+    RotoWirePlayer,
+    YahooDefenseStats,
+    YahooPointsAgainst,
+)
 from malamoneyball_agent.nfl_calendar import get_nfl_season, get_nfl_week
 from malamoneyball_agent.razzball import defense_stats, download_week, offense_stats
 from malamoneyball_agent.rotowire import download_main_slate
@@ -444,36 +449,33 @@ def fetch_defense_vs_position(
 ) -> dict:
     """Fetch how each NFL defense has done against one offensive position.
 
-    From DraftEdge's Defense vs Position tables, built from real box scores:
-    the DraftKings points the players at that position scored against each
-    defense, per game. Use it for matchups, e.g. how a player's opponent has
-    done against his position.
+    Two sources, both built from real box scores and per game. DraftEdge
+    gives the DraftKings points the players at that position scored against
+    each defense; Yahoo gives their stats (yards, touchdowns, targets, ...).
+    Use it for matchups, e.g. how a player's opponent has done against his
+    position, or which defenses give up the most rushing yards to running
+    backs.
 
-    Only three numbers are this season alone or another single stretch:
-    draftkings_points_this_season, draftkings_points_last_4_games and
-    draftkings_points_last_season. rank_this_season ranks all 32 defenses by
-    draftkings_points_this_season: rank 1 allows the fewest, the toughest
-    matchup; rank 32 allows the most, the softest. Use these to judge a
-    matchup.
+    This season alone: draftkings_points_this_season, rank_this_season,
+    draftkings_points_last_4_games and every stat in stats_per_game.
+    rank_this_season ranks all 32 defenses by draftkings_points_this_season:
+    rank 1 allows the fewest, the toughest matchup; rank 32 allows the most,
+    the softest. draftkings_points_last_season is last season alone.
 
-    Everything under blended mixes this season's games with last season's,
-    about 50/50 after 4 games and mostly this season by midseason: DraftEdge's
-    rank, DraftKings and FanDuel points, vs_league_average (positive is
-    softer than average) and every stat in stats_per_game. DraftEdge has no
-    this-season version of the stats. Use blended numbers only when asked
-    about a defense's stats (e.g. which give up the most rushing yards to
-    running backs), and call them blended. Every number is per game.
+    Everything under blended mixes this season's games with last season's
+    (DraftEdge's rank, DraftKings and FanDuel points, and vs_league_average).
+    Don't use it to judge a matchup.
 
-    The tables are downloaded at most every 12 hours. If DraftEdge can't be
-    reached or its page has changed, the last saved copy is used instead:
-    stale is then true, stale_reason says what went wrong, and downloaded_at
-    (local time) says how old the numbers are.
+    Each source is downloaded at most every 12 hours. sources says, for
+    DraftEdge and Yahoo, when its numbers were downloaded (local time), or
+    the error if it couldn't be read; its numbers are then null. If a site
+    can't be reached or its page has changed, its last saved copy is used:
+    stale is then true and stale_reason says what went wrong.
 
-    Returns the position, the two seasons' names, and the defenses sorted by
+    Returns the position, the season, sources, and the defenses sorted by
     sort_by, most allowed first. Each has team (abbreviation), team name,
-    those points and rank, DraftEdge's trend (whether it's allowing more or
-    less lately) and the blended numbers. Team defenses (DST) aren't a
-    position here.
+    those numbers and DraftEdge's trend (whether it's allowing more or less
+    lately). Team defenses (DST) aren't a position here.
 
     Args:
         position: The offensive position: QB, RB, WR or TE.
@@ -482,74 +484,143 @@ def fetch_defense_vs_position(
             the projections tools works as it is. Use "" for all 32.
         sort_by: What to sort by, most allowed first:
             draftkings_points_this_season, draftkings_points_last_4_games,
-            draftkings_points_blended, or a blended stat. QB stats:
-            passing_yards, passing_touchdowns, interceptions, sacks,
-            rushing_yards. RB: rushing_yards, rushing_touchdowns, targets,
-            receptions, receiving_yards. WR and TE: targets, receptions,
-            receiving_yards, receiving_touchdowns, receptions_20_plus_yards.
+            draftkings_points_blended, or a stat this season. QB stats:
+            passing_yards, passing_touchdowns, interceptions,
+            rushing_attempts, rushing_yards, rushing_touchdowns,
+            fumbles_lost. RB: rushing_attempts, rushing_yards,
+            rushing_touchdowns, targets, receptions, receiving_yards,
+            receiving_touchdowns, fumbles_lost. WR: targets, receptions,
+            receiving_yards, receiving_touchdowns, rushing_yards. TE:
+            targets, receptions, receiving_yards, receiving_touchdowns.
         limit: Maximum number of defenses to return, at most 32.
     """
 
-    table = download_position(position)
-    sort_keys: dict[str, Callable[[DefenseRow], float | None]] = {
-        "draftkings_points_this_season": lambda d: d.this_season_points,
-        "draftkings_points_last_4_games": lambda d: d.last_4_games_points,
-        "draftkings_points_blended": lambda d: d.draftkings_points,
-        **{stat: _stat(stat) for stat in STATS[table.position].values()},
+    position = position.upper()
+    if position not in draftedge.POSITIONS:
+        raise ValueError(f"Position must be QB, RB, WR or TE, not {position!r}.")
+    stats = yahoo.STATS[position]
+    sort_keys: dict[str, Callable[[dict], float | None]] = {
+        "draftkings_points_this_season": lambda d: d["draftkings_points_this_season"],
+        "draftkings_points_last_4_games": lambda d: d["draftkings_points_last_4_games"],
+        "draftkings_points_blended": lambda d: (d["blended"] or {}).get(
+            "draftkings_points"
+        ),
+        **{stat: _stat(stat) for stat in stats},
     }
     if sort_by not in sort_keys:
         raise ValueError(
-            f"Can't sort {table.position} defenses by {sort_by!r}; use one of "
+            f"Can't sort {position} defenses by {sort_by!r}; use one of "
             f"{', '.join(sort_keys)}."
         )
 
-    # Ranked across all 32 before any are filtered out.
-    ranks = this_season_ranks(table.defenses)
-    defenses = table.defenses
+    # Either site failing still answers with the other's numbers.
+    season = get_nfl_season()
+    errors: dict[str, str] = {}
+    points: DefenseVsPosition | None = None
+    allowed: YahooPointsAgainst | None = None
+    try:
+        points = draftedge.download_position(position)
+    except RuntimeError as error:
+        errors["draftedge"] = str(error)
+    try:
+        allowed = yahoo.download_position(season, position)
+    except RuntimeError as error:
+        errors["yahoo"] = str(error)
+    if points is None and allowed is None:
+        raise RuntimeError(" ".join(errors.values()))
+
+    defenses = _join_defenses(points, allowed, stats)
     if team:
         # An exact abbreviation wins: "LA" is the Rams, not Atlanta or Dallas.
         query = team.strip().lower()
         abbreviation = TEAM_ALIASES.get(query.upper(), query).lower()
-        defenses = [d for d in defenses if d.team.lower() == abbreviation] or [
-            d for d in defenses if query in d.team_name.lower()
+        defenses = [d for d in defenses if d["team"].lower() == abbreviation] or [
+            d for d in defenses if query in d["team_name"].lower()
         ]
     # Missing numbers go last.
     key = sort_keys[sort_by]
     defenses = sorted(defenses, key=lambda d: (key(d) is None, -(key(d) or 0)))
 
     return {
-        "position": table.position,
-        "this_season": table.this_season,
-        "last_season": table.last_season,
-        "downloaded_at": table.downloaded_at.astimezone().isoformat(timespec="minutes"),
-        "stale": table.stale_reason is not None,
-        "stale_reason": table.stale_reason,
-        "defenses": [
-            _defense(d, ranks.get(d.team)) for d in defenses[: min(limit, 32)]
-        ],
+        "position": position,
+        "this_season": points.this_season if points else _season_name(season),
+        "last_season": points.last_season if points else None,
+        "sources": {
+            "draftedge": _source(points, errors.get("draftedge")),
+            "yahoo": _source(allowed, errors.get("yahoo")),
+        },
+        "defenses": defenses[: min(limit, 32)],
     }
 
 
-def _stat(stat: str) -> Callable[[DefenseRow], float | None]:
-    return lambda defense: defense.stats[stat]
+def _stat(stat: str) -> Callable[[dict], float | None]:
+    return lambda defense: (defense["stats_per_game"] or {}).get(stat)
 
 
-def _defense(defense: DefenseRow, rank_this_season: int | None) -> dict:
+def _season_name(season: int) -> str:
+    return f"{season}-{(season + 1) % 100:02d}"
+
+
+def _source(
+    table: DefenseVsPosition | YahooPointsAgainst | None, error: str | None
+) -> dict:
+    if table is None:
+        return {"error": error}
     return {
-        "team": defense.team,
-        "team_name": defense.team_name,
-        "draftkings_points_this_season": defense.this_season_points,
+        "downloaded_at": table.downloaded_at.astimezone().isoformat(timespec="minutes"),
+        "stale": table.stale_reason is not None,
+        "stale_reason": table.stale_reason,
+    }
+
+
+def _join_defenses(
+    points: DefenseVsPosition | None,
+    allowed: YahooPointsAgainst | None,
+    stats: list[str],
+) -> list[dict]:
+    """Each defense's DraftEdge points and Yahoo stats, joined by team."""
+    rows = {d.team: d for d in points.defenses} if points else {}
+    ranks = this_season_ranks(points.defenses) if points else {}
+    stats_by_team = {d.team: d for d in allowed.defenses} if allowed else {}
+    names = {d.team: d.team_name for d in stats_by_team.values()}
+    names |= {d.team: d.team_name for d in rows.values()}
+    return [
+        _defense(
+            team, name, rows.get(team), ranks.get(team), stats_by_team.get(team), stats
+        )
+        for team, name in names.items()
+    ]
+
+
+def _defense(
+    team: str,
+    team_name: str,
+    row: DefenseRow | None,
+    rank_this_season: int | None,
+    allowed: YahooDefenseStats | None,
+    stats: list[str],
+) -> dict:
+    return {
+        "team": team,
+        "team_name": team_name,
+        "draftkings_points_this_season": row.this_season_points if row else None,
         "rank_this_season": rank_this_season,
-        "draftkings_points_last_4_games": defense.last_4_games_points,
-        "draftkings_points_last_season": defense.last_season_points,
-        "trend": defense.trend,
-        "blended": {
-            "rank": defense.rank,
-            "draftkings_points": defense.draftkings_points,
-            "fanduel_points": defense.fanduel_points,
-            "vs_league_average": defense.vs_league_average,
-            "stats_per_game": defense.stats,
-        },
+        "draftkings_points_last_4_games": row.last_4_games_points if row else None,
+        "stats_per_game": (
+            {stat: getattr(allowed, stat) for stat in stats} if allowed else None
+        ),
+        "draftkings_points_last_season": row.last_season_points if row else None,
+        "trend": row.trend if row else None,
+        "blended": (
+            {
+                "rank": row.rank,
+                "draftkings_points": row.draftkings_points,
+                "fanduel_points": row.fanduel_points,
+                "vs_league_average": row.vs_league_average,
+            }
+            if row
+            else None
+        ),
     }
 
 
@@ -558,8 +629,8 @@ def _defense(defense: DefenseRow, rank_this_season: int | None) -> dict:
 INSTRUCTIONS = """\
 You are a fantasy football assistant, used from a terminal or a web page. You
 help with lineup decisions using weekly NFL projections from Razzball and
-RotoWire, DraftKings salaries, and DraftEdge's numbers on how each defense
-does against each position.
+RotoWire, DraftKings salaries, and DraftEdge's and Yahoo's numbers on how
+each defense does against each position.
 
 Projections:
 - Use the projection tools for any question about projected points. Never
@@ -645,42 +716,41 @@ Lineups:
 
 Defense vs position:
 - Use the defense vs position tool for questions about how defenses do
-  against a position.
+  against a position. For a stat (e.g. which give up the most rushing yards
+  to running backs), sort by that stat.
 - Only this season counts. Judge a defense by
-  draftkings_points_this_season and rank_this_season, and call them this
-  season's.
-- Everything under blended mixes in last season. Use it only when asked
-  about a defense's stats (e.g. which give up the most rushing yards to
-  running backs, sorted by that stat), since DraftEdge has no this-season
-  stats, and say they're blended with last season. Never use the blended
-  rank or blended DraftKings points.
+  draftkings_points_this_season, rank_this_season and its stats_per_game
+  (Yahoo's, this season alone), and call them this season's.
+- Never use anything under blended: it mixes in last season.
 - Rank 1 is the toughest matchup (fewest points allowed), rank 32 the
   softest. "Most allowed" means the highest numbers, not rank 1.
 - Every number is per game; say so.
-- If the result is stale, say the numbers are DraftEdge's from when they
-  were downloaded (the day, and the time if it's today) because DraftEdge
-  couldn't be reached just now, in one short sentence.
+- If a source in sources is stale, say its numbers are from when they were
+  downloaded (the day, and the time if it's today) because the site
+  couldn't be reached just now, in one short sentence. If a source has an
+  error, answer from the other and say which numbers are missing.
 
 Matchups:
 - When comparing players for start/sit, a Lineup or a pick, or explaining a
   pick, look up each player's opponent (from the projections) in the defense
   vs position tool, at that player's position. Use the opponent exactly as
   the projections give it.
-- Give only this season's numbers: the DraftKings points the defense has
-  allowed per game to the position this season
-  (draftkings_points_this_season) and its rank out of 32 by them
-  (rank_this_season). Add draftkings_points_last_4_games only when it's
-  clearly different, as a sign the defense is getting better or worse.
-- Never give blended numbers when evaluating players: not the blended rank,
-  blended points or any stat in stats_per_game.
+- Give this season's numbers only: the DraftKings points the defense has
+  allowed per game to the position (draftkings_points_this_season), its
+  rank out of 32 by them (rank_this_season), and the stats that matter for
+  the position from stats_per_game: passing yards and passing TDs for QBs;
+  rushing yards and rushing TDs for RBs; receiving yards and targets for
+  WRs and TEs. Add draftkings_points_last_4_games only when it's clearly
+  different, as a sign the defense is getting better or worse.
+- Never give blended numbers: not the blended rank or blended points.
 - A matchup is one reason among others. Mention a clearly good or bad one,
   but don't let it overrule a clearly better projection unless the user
   asks about matchups.
 - For "best matchups" questions, pair the players at that position with
-  their opponents' this-season numbers and sort by them; say which projections and
-  slate the players came from.
-- Team defenses (DST) have no matchup numbers: DraftEdge covers QB, RB, WR
-  and TE only.
+  their opponents' this-season numbers and sort by them; say which
+  projections and slate the players came from.
+- Team defenses (DST) have no matchup numbers: the defense vs position tool
+  covers QB, RB, WR and TE only.
 
 Keep answers short. A small table works well for side-by-side numbers.
 """
