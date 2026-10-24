@@ -12,7 +12,14 @@ import requests
 from agents import FunctionTool
 from agents.tool_context import ToolContext
 
-from malamoneyball_agent import assistant, draftedge, razzball, rotowire, terminal
+from malamoneyball_agent import (
+    assistant,
+    draftedge,
+    razzball,
+    rotowire,
+    terminal,
+    yahoo,
+)
 
 
 @dataclass
@@ -113,13 +120,14 @@ class RotoWireToolCaller:
             return asyncio.run(tool.on_invoke_tool(ctx, raw))
 
 
-class DraftEdgeToolCaller:
-    """Invokes the defense vs position tool against a fake DraftEdge.
+class DefenseToolCaller:
+    """Invokes the defense vs position tool against a fake DraftEdge and Yahoo.
 
-    It starts out serving the trimmed real pages in `fixtures/`, one per
-    position; set `pages[position]` to other HTML, or to a `requests` error,
-    and `status` to another HTTP status. `requests_made` counts requests over
-    the whole test.
+    It starts out serving the real pages in `fixtures/`, one per position and
+    site; set `pages[position]` (DraftEdge) or `yahoo_pages[position]` to
+    other HTML, or to a `requests` error, and `status` or `yahoo_status` to
+    another HTTP status. `requests_made` and `yahoo_requests_made` count each
+    site's requests over the whole test.
     """
 
     def __init__(self) -> None:
@@ -128,21 +136,35 @@ class DraftEdgeToolCaller:
             position: (fixtures / f"draftedge_{position.lower()}.html").read_text()
             for position in draftedge.POSITIONS
         }
+        self.yahoo_pages: dict[str, str | Exception] = {
+            position: (fixtures / f"yahoo_{position.lower()}.html").read_text()
+            for position in yahoo.POSITIONS
+        }
         self.status = 200
+        self.yahoo_status = 200
         self.get = mock.Mock(side_effect=self._respond)
+        self.yahoo_get = mock.Mock(side_effect=self._respond_yahoo)
 
     @property
     def requests_made(self) -> int:
         return self.get.call_count
 
+    @property
+    def yahoo_requests_made(self) -> int:
+        return self.yahoo_get.call_count
+
+    def _route(self, url: str, *args: Any, **kwargs: Any) -> Any:
+        if url == yahoo.PAGE_URL:
+            return self.yahoo_get(url, *args, **kwargs)
+        return self.get(url, *args, **kwargs)
+
     def _respond(self, url: str, params: dict, **_kwargs: Any) -> requests.Response:
-        page = self.pages[params["pos"].upper()]
-        if isinstance(page, Exception):
-            raise page
-        fake = requests.Response()
-        fake.status_code = self.status
-        fake._content = page.encode()
-        return fake
+        return _page(self.pages[params["pos"].upper()], self.status)
+
+    def _respond_yahoo(
+        self, url: str, params: dict, **_kwargs: Any
+    ) -> requests.Response:
+        return _page(self.yahoo_pages[params["pos"]], self.yahoo_status)
 
     def __call__(self, arguments: dict) -> Any:
         tool = assistant.fetch_defense_vs_position
@@ -150,8 +172,17 @@ class DraftEdgeToolCaller:
         ctx = ToolContext(
             context=None, tool_name=tool.name, tool_call_id="1", tool_arguments=raw
         )
-        with mock.patch.object(draftedge.requests, "get", self.get):
+        with mock.patch.object(requests, "get", self._route):
             return asyncio.run(tool.on_invoke_tool(ctx, raw))
+
+
+def _page(page: str | Exception, status: int) -> requests.Response:
+    if isinstance(page, Exception):
+        raise page
+    fake = requests.Response()
+    fake.status_code = status
+    fake._content = page.encode()
+    return fake
 
 
 @pytest.fixture(autouse=True)
@@ -159,6 +190,7 @@ def empty_projections_cache():
     razzball._projections_cache.clear()
     rotowire._main_slate_cache.clear()
     draftedge._cache.clear()
+    yahoo._cache.clear()
 
 
 @pytest.fixture
@@ -167,8 +199,8 @@ def fake_rotowire() -> RotoWireToolCaller:
 
 
 @pytest.fixture
-def fake_draftedge() -> DraftEdgeToolCaller:
-    return DraftEdgeToolCaller()
+def fake_draftedge() -> DefenseToolCaller:
+    return DefenseToolCaller()
 
 
 def _fixture(name: str) -> Any:

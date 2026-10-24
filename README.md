@@ -4,8 +4,9 @@ A fantasy football assistant that runs in your terminal or a web page on your
 own machine. Ask it lineup questions in plain English and it answers from
 [Razzball](https://razzball.com)'s and [RotoWire](https://www.rotowire.com)'s
 weekly NFL projections, side by side (or just one, if you name it), and
-knows how each defense has done against each position from
-[DraftEdge](https://draftedge.com/nfl/nfl-defense-vs-pos/):
+knows how each defense has done against each position this season from
+[DraftEdge](https://draftedge.com/nfl/nfl-defense-vs-pos/) and
+[Yahoo](https://football.fantasysports.yahoo.com/f1/pointsagainst):
 
 ```
 You: Should I start Jahmyr Gibbs or Bijan Robinson?
@@ -116,28 +117,30 @@ Good to know:
   Thursday, international, Sunday night or Monday games). They come from the
   data behind RotoWire's DraftKings optimizer page, which needs no key but
   isn't an official API, so it may change without notice.
-- **Defense vs position:** DraftEdge's numbers are per game. Answers judge
-  a defense by the DraftKings points it has allowed to a position this
-  season alone, and its rank by them: 1 is the toughest defense to face, 32
-  the softest. DraftEdge's other numbers, including every stat such as
-  rushing yards allowed, blend this season with last season (about 50/50
-  after 4 games, mostly this season by midseason), so answers only use them
-  when you ask about those stats, and call them blended. It comes from
-  DraftEdge's public Defense vs Position page, which isn't an API, so it
-  may change without notice.
+- **Defense vs position:** every number is per game and this season only.
+  The DraftKings points a defense has allowed to a position come from
+  DraftEdge, and answers rank defenses by them: 1 is the toughest to face,
+  32 the softest. The stats behind them (yards, touchdowns, targets and so
+  on) come from Yahoo. DraftEdge's other numbers blend this season with last
+  season, so answers don't use them. Both come from public pages, DraftEdge's
+  Defense vs Position and Yahoo's points against, which aren't APIs, so they
+  may change without notice. If one can't be read, answers use the other and
+  say what's missing.
 - **Matchups:** when comparing players or building a lineup, answers say how
   many DraftKings points each player's opponent has allowed to that position
-  per game this season, and its rank, as one reason among others; a matchup
-  doesn't overrule a clearly better projection unless you ask about
-  matchups. Team defenses have no matchup numbers.
+  per game this season, its rank, and the stats that matter for the
+  position (rushing yards and touchdowns for a running back, say), as one
+  reason among others; a matchup doesn't overrule a clearly better
+  projection unless you ask about matchups. Team defenses have no matchup
+  numbers.
 - **Value:** comparisons show each player's DraftKings salary and projected
   DraftKings points per $1,000 of it, for each source. Only players on this
   week's DraftKings main slate have a salary.
 - **Speed:** each week's projections are downloaded once and reused for five
-  minutes. DraftEdge's defense numbers are saved in the data folder (under
-  `draftedge/`) and reused for 12 hours, even after a restart. If DraftEdge
-  can't be reached, or its page has changed, answers use the last saved
-  numbers and say how old they are.
+  minutes. DraftEdge's and Yahoo's defense numbers are saved in the data
+  folder (under `draftedge/` and `yahoo/`) and reused for 12 hours, even
+  after a restart. If a site can't be reached, or its page has changed,
+  answers use its last saved numbers and say how old they are.
 
 ## The web page
 
@@ -211,7 +214,8 @@ The code lives in `src/malamoneyball_agent/`:
   `models.py` describes one projection row.
 - `rotowire.py` does the same for RotoWire's DraftKings main slate.
 - `draftedge.py` downloads, caches and reads DraftEdge's Defense vs Position
-  tables.
+  tables, and `yahoo.py` Yahoo's points-against tables. `saved_pages.py`
+  keeps both sites' pages in the data folder.
 - `draftkings_scoring.py` holds DraftKings' NFL Classic scoring rules and
   turns a stat line into DraftKings points.
 - `draftkings_lineup.py` holds DraftKings' NFL Classic lineup rules and
