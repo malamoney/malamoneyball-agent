@@ -16,6 +16,7 @@ from agents.tool_context import ToolContext
 from malamoneyball_agent import (
     assistant,
     draftedge,
+    footballguys,
     nfl_calendar,
     razzball,
     rotowire,
@@ -192,6 +193,7 @@ def empty_projections_cache():
     razzball._projections_cache.clear()
     rotowire._main_slate_cache.clear()
     draftedge._cache.clear()
+    footballguys._projections_cache.clear()
     yahoo._cache.clear()
 
 

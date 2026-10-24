@@ -77,6 +77,7 @@ Things you can ask:
 - "Best team defenses for week 5?"
 - "How many half-PPR points is Amon-Ra St. Brown projected for?"
 - "What does RotoWire project for Jahmyr Gibbs?"
+- "What does FootballGuys project for Jahmyr Gibbs?"
 - "What's Puka Nacua's DraftKings salary?"
 - "Which running backs are good value under $6,000?"
 - "Is this DraftKings lineup legal: Lamar Jackson, Jahmyr Gibbs, …?"
@@ -91,6 +92,11 @@ Good to know:
   half-PPR, DraftKings or FanDuel). RotoWire only projects DraftKings points,
   so answers compare it with Razzball's DraftKings points and label which
   scoring each number uses.
+- **FootballGuys:** ask for [FootballGuys](https://www.footballguys.com)' consensus
+  projections by name. They're projected stats only, for QBs, RBs, WRs and
+  TEs, so the app scores them with DraftKings' rules. Those points leave out
+  yardage bonuses and return TDs, which FootballGuys doesn't project, so
+  they run a little low.
 - **Team defenses:** Razzball's DraftKings points for defenses run about 4
   points above what DraftKings' scoring rules give for Razzball's own
   projected stats, and above RotoWire's. Answers show both Razzball numbers,
@@ -211,7 +217,8 @@ The code lives in `src/malamoneyball_agent/`:
 - `conversations.py` saves conversations and their histories.
 - `razzball.py` downloads, caches and parses Razzball's projections, and
   `models.py` describes one projection row.
-- `rotowire.py` does the same for RotoWire's DraftKings main slate.
+- `rotowire.py` does the same for RotoWire's DraftKings main slate, and
+  `footballguys.py` for FootballGuys' consensus projections.
 - `draftedge.py` downloads, caches and reads DraftEdge's Defense vs Position
   tables, and `yahoo.py` Yahoo's points-against tables. `saved_pages.py`
   keeps both sites' pages in the data folder.

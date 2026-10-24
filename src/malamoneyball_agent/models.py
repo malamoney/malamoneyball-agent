@@ -265,3 +265,45 @@ class DraftEdgePointsAllowed(BaseModel):
     defenses: list[DraftEdgeDefense]
     downloaded_at: datetime
     stale_reason: str | None = None
+
+
+class FootballGuysProjection(BaseModel):
+    """One player's weekly projection from FootballGuys' consensus.
+
+    Projected stats only: FootballGuys' download has no fantasy points and no
+    opponent. A stat FootballGuys doesn't give for the position stays None.
+    team is the abbreviation the other sources use, or FA for a free agent.
+    """
+
+    footballguys_id: str
+    name: str
+    position: str
+    team: str
+    passing_attempts: float | None = None
+    passing_completions: float | None = None
+    passing_yards: float | None = None
+    passing_touchdowns: float | None = None
+    interceptions: float | None = None
+    sacks: float | None = None
+    passing_two_point_conversions: float | None = None
+    rushing_attempts: float | None = None
+    rushing_yards: float | None = None
+    rushing_touchdowns: float | None = None
+    rushing_two_point_conversions: float | None = None
+    targets: float | None = None
+    receptions: float | None = None
+    receiving_yards: float | None = None
+    receiving_touchdowns: float | None = None
+    receiving_two_point_conversions: float | None = None
+    fumbles_lost: float | None = None
+
+
+class FootballGuysWeek(BaseModel):
+    """A week of FootballGuys' consensus projections.
+
+    No players means FootballGuys hasn't posted the week yet.
+    """
+
+    season: int
+    week: int
+    players: list[FootballGuysProjection]
