@@ -2,6 +2,7 @@ import asyncio
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -15,6 +16,7 @@ from agents.tool_context import ToolContext
 from malamoneyball_agent import (
     assistant,
     draftedge,
+    nfl_calendar,
     razzball,
     rotowire,
     terminal,
@@ -199,7 +201,9 @@ def fake_rotowire() -> RotoWireToolCaller:
 
 
 @pytest.fixture
-def fake_draftedge() -> DefenseToolCaller:
+def fake_draftedge(monkeypatch) -> DefenseToolCaller:
+    # The fixtures are from 2026-10-23, in the 2026 season.
+    monkeypatch.setattr(nfl_calendar, "_today", lambda: date(2026, 10, 23))
     return DefenseToolCaller()
 
 

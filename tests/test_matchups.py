@@ -152,10 +152,6 @@ def test_each_position_gets_its_own_stats():
     assert "receiving yards and targets for WRs and TEs" in TEXT
 
 
-def test_matchups_never_give_blended_numbers():
-    assert "Never give blended numbers" in TEXT
-
-
 def test_a_matchup_doesnt_overrule_a_clearly_better_projection():
     assert "A matchup is one reason among others" in TEXT
     assert "don't let it overrule a clearly better projection" in TEXT

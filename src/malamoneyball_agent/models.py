@@ -238,3 +238,30 @@ class YahooPointsAgainst(BaseModel):
     defenses: list[YahooDefenseStats]
     downloaded_at: datetime
     stale_reason: str | None = None
+
+
+class DraftEdgeDefense(BaseModel):
+    """One defense against one position, from DraftEdge, per game.
+
+    DraftKings points the players at that position scored against it, this
+    season alone and over its last 4 games. team is the abbreviation the
+    projections use.
+    """
+
+    team: str
+    team_name: str
+    this_season_points: float | None
+    last_4_games_points: float | None
+
+
+class DraftEdgePointsAllowed(BaseModel):
+    """One position's table from DraftEdge.
+
+    stale_reason says why a saved copy was used.
+    """
+
+    position: str
+    season: int
+    defenses: list[DraftEdgeDefense]
+    downloaded_at: datetime
+    stale_reason: str | None = None
