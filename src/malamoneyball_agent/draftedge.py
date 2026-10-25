@@ -5,11 +5,17 @@ one table per offensive position, and needs no key. Each table has one row
 per defense. Only the DraftKings points it allowed per game to that position
 this season, and over its last 4 games, are read.
 
-The page's other numbers aren't: its rank, DK FPA, FD FPA, vs Avg and the
+The page's other numbers aren't: its rank, DK FPA, FD FPA, vs avg and the
 per-game stats blend this season with last season, and last season's
-points and the trend aren't used. The stats against each position come from
-Yahoo instead (see yahoo.py). Only the columns read are checked, so a change
-to any other column doesn't break reading.
+points, the trend and this week's opponent aren't used. The stats against
+each position come from Yahoo instead (see yahoo.py). Only the columns read
+are checked, so a change to any other column doesn't break reading.
+
+DraftEdge redesigned the page on 2026-10-24. Before, it had one heading row
+and named this season's column "2026-27/G" and the last 4 games' "L4". Now a
+row of group headings ("Points allowed", "Windows", ...) comes first, and the
+columns are "2026-27" and "Last 4". Both layouts are read, so copies saved
+before the redesign still load.
 
 Each table that downloads and reads cleanly is saved in the data folder and
 reused for 12 hours, across restarts. If a later download fails, the saved
@@ -42,9 +48,9 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-# The last 4 games' column. This season's is named after it, e.g. "2026-27/G"
-# for the season starting in 2026.
-_LAST_4_GAMES = "L4"
+# The names the last 4 games' column has had, newest first. This season's is
+# named after the season: see _this_season_names.
+_LAST_4_GAMES = ("Last 4", "L4")
 
 # Abbreviations the projections spell differently from DraftEdge, checked
 # against live data on 2026-10-23: Razzball and RotoWire call the Rams LAR,
@@ -139,14 +145,25 @@ def parse_table(
             "have changed."
         )
 
-    # Each column read is found by its heading, which must appear exactly
-    # once; the other columns can change freely.
-    this_season = f"{season}-{(season + 1) % 100:02d}/G"
-    headings = [_text(th) for th in table.select("thead th")]
+    # Only the last heading row names the columns; one above it groups them.
+    # Each column read is found by its heading, under any of its names, and
+    # must appear exactly once; the other columns can change freely.
+    heading_rows = table.select("thead tr")
+    last_row = heading_rows[-1].find_all("th") if heading_rows else []
+    headings = [_text(th) for th in last_row]
+    wanted = {
+        "team": ("Team",),
+        "this_season": _this_season_names(season),
+        "last_4_games": _LAST_4_GAMES,
+    }
+    found = {
+        column: [heading for heading in headings if heading in names]
+        for column, names in wanted.items()
+    }
     missing = [
-        heading
-        for heading in ["Team", this_season, _LAST_4_GAMES]
-        if headings.count(heading) != 1
+        " or ".join(wanted[column])
+        for column, matches in found.items()
+        if len(matches) != 1
     ]
     if missing:
         raise RuntimeError(
@@ -154,11 +171,12 @@ def parse_table(
             f"{', '.join(missing)} column ({', '.join(headings)}); the page may "
             "have changed."
         )
+    [this_season], [last_4_games] = found["this_season"], found["last_4_games"]
 
     defenses = []
     for number, tr in enumerate(table.select("tbody tr"), start=1):
         try:
-            defenses.append(_row(tr, headings, this_season))
+            defenses.append(_row(tr, headings, this_season, last_4_games))
         except ValueError as error:
             raise RuntimeError(
                 f"DraftEdge's {position} table has a row that can't be read "
@@ -177,7 +195,19 @@ def parse_table(
     )
 
 
-def _row(tr: Tag, headings: list[str], this_season: str) -> DraftEdgeDefense:
+def _this_season_names(season: int) -> tuple[str, str]:
+    """The names this season's column has had, e.g. "2026-27" and "2026-27/G".
+
+    Both are built from season, so last season's column ("2025-26" in 2026)
+    can never be taken for this season's.
+    """
+    name = f"{season}-{(season + 1) % 100:02d}"
+    return (name, f"{name}/G")
+
+
+def _row(
+    tr: Tag, headings: list[str], this_season: str, last_4_games: str
+) -> DraftEdgeDefense:
     cells = tr.find_all("td", recursive=False)
     if len(cells) != len(headings):
         raise ValueError(f"{len(cells)} cells for {len(headings)} columns")
@@ -193,7 +223,7 @@ def _row(tr: Tag, headings: list[str], this_season: str) -> DraftEdgeDefense:
         team=_RENAMED.get(_text(abbreviation), _text(abbreviation)),
         team_name=_text(name),
         this_season_points=_number(by_heading[this_season]),
-        last_4_games_points=_number(by_heading[_LAST_4_GAMES]),
+        last_4_games_points=_number(by_heading[last_4_games]),
     )
 
 

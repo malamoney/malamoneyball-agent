@@ -5,15 +5,18 @@ from pathlib import Path
 import pytest
 import requests
 
-from malamoneyball_agent import nfl_calendar
+from malamoneyball_agent import draftedge, nfl_calendar
 from malamoneyball_agent.assistant import INSTRUCTIONS, fetch_defense_vs_position
 
-# The DraftEdge fixtures are its real tables from 2026-10-23, trimmed to 8 or
-# 9 of their 32 defenses each: the 3 toughest, the 3 softest, and KC, HOU
-# and the Rams (LA on DraftEdge). Ranks this season are among those rows
-# only. The Yahoo fixtures are its full tables from the same day, so the
-# other defenses come back with Yahoo's stats and no DraftKings points.
-ALL_TEAMS = Path(__file__).parent / "fixtures" / "draftedge_qb_all_teams.html"
+# The DraftEdge fixtures are its real tables from 2026-10-24, after its
+# redesign, trimmed to 8 or 9 of their 32 defenses each: the 3 toughest, the
+# 3 softest, and KC, HOU and the Rams (LA on DraftEdge). Ranks this season are
+# among those rows only. The *_old_layout fixtures are the same rows from
+# 2026-10-23, before the redesign, with the same numbers. The Yahoo fixtures
+# are its full tables from 2026-10-23, so the other defenses come back with
+# Yahoo's stats and no DraftKings points.
+FIXTURES = Path(__file__).parent / "fixtures"
+ALL_TEAMS = FIXTURES / "draftedge_qb_all_teams.html"
 
 
 def teams(output) -> list[str]:
@@ -311,8 +314,10 @@ def test_columns_that_arent_read_can_change(fake_draftedge):
     for old, new in [
         (">Rush Yds<", ">Rushing Yards<"),
         (">DK FPA<", ">DK Points<"),
-        (">2025-26/G<", ">Last Season<"),
+        (">2025-26<", ">Last Season<"),
         (">Trend<", ">Form<"),
+        (">This week<", ">Next game<"),
+        (">Windows<", ">Recent<"),
     ]:
         page = page.replace(old, new)
     fake_draftedge.pages["RB"] = page
@@ -323,12 +328,58 @@ def test_columns_that_arent_read_can_change(fake_draftedge):
     assert output["defenses"][0]["draftkings_points_last_4_games"] == 17.0
 
 
+def old_layout(position: str) -> str:
+    return (FIXTURES / f"draftedge_{position.lower()}_old_layout.html").read_text()
+
+
+@pytest.mark.parametrize("position", ["QB", "RB", "WR", "TE"])
+def test_the_page_before_the_redesign_still_reads(fake_draftedge, position):
+    new = fake_draftedge({"position": position})["defenses"]
+    draftedge._cache.clear()
+    fake_draftedge.pages[position] = old_layout(position)
+
+    output = fake_draftedge({"position": position})
+
+    assert output["sources"]["draftedge"].get("error") is None
+    for column in ["draftkings_points_this_season", "draftkings_points_last_4_games"]:
+        assert [d[column] for d in output["defenses"]] == [d[column] for d in new]
+
+
+@pytest.mark.parametrize("position", ["QB", "RB", "WR", "TE"])
+def test_every_position_reads_from_the_redesigned_page(fake_draftedge, position):
+    output = fake_draftedge({"position": position, "team": "KC"})
+
+    assert output["sources"]["draftedge"].get("error") is None
+    assert output["defenses"][0]["draftkings_points_this_season"] is not None
+
+
+def test_kansas_city_against_tight_ends(fake_draftedge):
+    output = fake_draftedge({"position": "TE", "team": "KC"})
+
+    # On the page: 2026-27 20.0, Last 4 20.7, 2025-26 11.2.
+    assert output["defenses"][0]["draftkings_points_this_season"] == 20.0
+    assert output["defenses"][0]["draftkings_points_last_4_games"] == 20.7
+
+
+def test_the_group_headings_above_the_columns_arent_read(fake_draftedge):
+    # A group heading named like a column read doesn't count as a second one.
+    page = fake_draftedge.pages["RB"]
+    assert isinstance(page, str)
+    fake_draftedge.pages["RB"] = page.replace(">Windows<", ">Last 4<")
+
+    output = fake_draftedge({"position": "RB", "team": "JAX"})
+
+    assert output["defenses"][0]["draftkings_points_last_4_games"] == 17.0
+
+
 @pytest.mark.parametrize(
     ("old", "new", "missing"),
     [
-        (">L4<", ">Last 4<", "L4"),
-        (">2026-27/G<", ">This Season<", "2026-27/G"),
-        (">Rush Yds<", ">L4<", "L4"),  # twice
+        (">Last 4<", ">Last 5<", "Last 4 or L4"),
+        (">2026-27<", ">This Season<", "2026-27 or 2026-27/G"),
+        (">Rush Yds<", ">Last 4<", "Last 4 or L4"),  # twice
+        (">Rush Yds<", ">L4<", "Last 4 or L4"),  # twice, under its old name
+        (">Rush Yds<", ">2026-27/G<", "2026-27 or 2026-27/G"),  # twice
         (">Team<", ">Defense<", "Team"),
     ],
 )
@@ -342,13 +393,49 @@ def test_a_column_that_is_read_must_be_there_once(fake_draftedge, old, new, miss
     assert f"DraftEdge's RB table doesn't have exactly one {missing} column" in error
 
 
-def test_a_page_from_another_season_isnt_read(fake_draftedge, monkeypatch):
-    # In the 2027 season, a 2026-27 column is last season's.
-    monkeypatch.setattr(nfl_calendar, "_today", lambda: date(2027, 10, 22))
+@pytest.mark.parametrize(
+    ("old", "new", "missing"),
+    [
+        (">L4<", ">L5<", "Last 4 or L4"),
+        (">2026-27/G<", ">This Season<", "2026-27 or 2026-27/G"),
+    ],
+)
+def test_a_column_that_is_read_must_be_there_in_the_old_layout_too(
+    fake_draftedge, old, new, missing
+):
+    fake_draftedge.pages["RB"] = old_layout("RB").replace(old, new, 1)
 
     error = draftedge_error(fake_draftedge, "RB")
 
-    assert "exactly one 2027-28/G column" in error
+    assert f"DraftEdge's RB table doesn't have exactly one {missing} column" in error
+
+
+@pytest.mark.parametrize("layout", ["new", "old"])
+def test_last_seasons_column_is_never_read_as_this_seasons(fake_draftedge, layout):
+    page = fake_draftedge.pages["RB"] if layout == "new" else old_layout("RB")
+    assert isinstance(page, str)
+    # This season's column gone, last season's still there.
+    page = page.replace(">2026-27<", ">This Season<").replace(
+        ">2026-27/G<", ">This Season<"
+    )
+    assert ">2025-26<" in page or ">2025-26/G<" in page
+    fake_draftedge.pages["RB"] = page
+
+    error = draftedge_error(fake_draftedge, "RB")
+
+    assert "exactly one 2026-27 or 2026-27/G column" in error
+
+
+@pytest.mark.parametrize("layout", ["new", "old"])
+def test_a_page_from_another_season_isnt_read(fake_draftedge, monkeypatch, layout):
+    # In the 2027 season, a 2026-27 column is last season's.
+    monkeypatch.setattr(nfl_calendar, "_today", lambda: date(2027, 10, 22))
+    if layout == "old":
+        fake_draftedge.pages["RB"] = old_layout("RB")
+
+    error = draftedge_error(fake_draftedge, "RB")
+
+    assert "exactly one 2027-28 or 2027-28/G column" in error
 
 
 def test_a_row_with_a_missing_cell_is_reported(fake_draftedge):

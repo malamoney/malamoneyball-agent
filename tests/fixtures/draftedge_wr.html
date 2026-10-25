@@ -1,33 +1,59 @@
-<!-- Trimmed from https://draftedge.com/nfl/nfl-defense-vs-pos/?pos=wr on 2026-10-23: the defense table only, 8 of its 32 rows. -->
+<!-- Trimmed from https://draftedge.com/nfl/nfl-defense-vs-pos/?pos=wr on 2026-10-24, after DraftEdge's redesign: the defense table only, 8 of its 32 rows. -->
 <html><body>
 <table class="dvp-table" id="dvp-table">
             <thead>
+                <tr class="dvp-groups">
+                    <th scope="colgroup" colspan="2"></th>
+                    <th scope="colgroup"></th>                    <th scope="colgroup" colspan="3" class="dvp-group">Points allowed</th>
+                    <th scope="colgroup" colspan="3" class="dvp-group hide-mobile">Windows</th>
+                    <th scope="colgroup" colspan="5" class="dvp-group hide-mobile">Per game allowed</th>
+                    <th scope="colgroup" colspan="2"></th>
+                </tr>
                 <tr>
-                    <th>Rank</th>
-                    <th>Team</th>
-                    <th class="sortable num col-fpa" data-col="fpa" title="Blended DraftKings fantasy points allowed per game">DK FPA</th>
-                    <th class="sortable num hide-mobile" data-col="fpaFd" title="Blended FanDuel fantasy points allowed per game">FD FPA</th>
-                    <th class="sortable num" data-col="vsAvg" title="FPA vs league average for the position">vs Avg</th>
-                    <th class="sortable num hide-mobile" data-col="prevSeason" title="2025-26 regular season per game">2025-26/G</th>
-                    <th class="sortable num hide-mobile" data-col="seasonToDate" title="2026-27 season to date per game">2026-27/G</th>
-                    <th class="sortable num hide-mobile" data-col="l4" title="Last 4 games moving average">L4</th>
-                                            <th class="sortable num hide-mobile" data-col="targets">Targets</th>
-                                            <th class="sortable num hide-mobile" data-col="receptions">Rec</th>
-                                            <th class="sortable num hide-mobile" data-col="recYards">Rec Yds</th>
-                                            <th class="sortable num hide-mobile" data-col="recTDs">Rec TD</th>
-                                            <th class="sortable num hide-mobile" data-col="rec20Plus">20+ Rec</th>
-                                        <th class="col-trend" title="Last 4 games vs baseline">Trend</th>
+                    <th scope="col" class="col-rank">Rank</th>
+                    <th scope="col">Team</th>
+                                        <th scope="col" class="sortable col-week" data-col="week" title="Next opponent and its top projected WR (DraftKings projection); sorts by that projection">This week</th>
+                                        <th scope="col" class="sortable num col-fpa" data-col="fpa" title="Blended DraftKings fantasy points allowed per game">DK FPA</th>
+                    <th scope="col" class="sortable num hide-mobile" data-col="fpaFd" title="Blended FanDuel fantasy points allowed per game">FD FPA</th>
+                    <th scope="col" class="sortable num col-vsavg" data-col="vsAvg" title="FPA vs league average for the position">vs avg</th>
+                    <th scope="col" class="sortable num hide-mobile" data-col="prevSeason" title="2025-26 regular season per game">2025-26</th>
+                    <th scope="col" class="sortable num hide-mobile" data-col="seasonToDate" title="2026-27 season to date per game">2026-27</th>
+                    <th scope="col" class="sortable num hide-mobile" data-col="l4" title="Last 4 games moving average">Last 4</th>
+                                            <th scope="col" class="sortable num hide-mobile" data-col="targets">Targets</th>
+                                            <th scope="col" class="sortable num hide-mobile" data-col="receptions">Rec</th>
+                                            <th scope="col" class="sortable num hide-mobile" data-col="recYards">Rec Yds</th>
+                                            <th scope="col" class="sortable num hide-mobile" data-col="recTDs">Rec TD</th>
+                                            <th scope="col" class="sortable num hide-mobile" data-col="rec20Plus">20+ Rec</th>
+                                        <th scope="col" class="col-trend" title="Last 4 games vs baseline">Trend</th>
+                    <th scope="col" class="col-more"><span class="visually-hidden">More</span></th>
                 </tr>
             </thead>
             <tbody>
-<tr>
-                        <td data-v="1">
+<tr id="dvp-min" class="dvp-row"
+                        data-dvp-team="MIN"
+                        data-dvp-name="Minnesota Vikings"
+                        data-dvp-pos="WR"
+                        data-dvp-rank="1"
+                        data-dvp-teams="32"
+                        data-dvp-vsavg="-8.2"
+                        data-dvp-week="vs IND: Keenan Allen 10.0 proj"
+                        data-dvp-opp="IND"
+                        data-dvp-player="Keenan Allen"
+                        data-dvp-proj="10.0"
+                        data-dvp-gb="/nfl/game/ind-min-2026-10-25/">
+                        <td class="col-rank" data-v="1">
                             <div class="rank-badge avoid">1</div>
                         </td>
-                        <td><div class="team-name"><img class="dvp-team-logo" src="/images/logos/nfl/min.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Minnesota Vikings</span><span class="dvp-team-abbr">MIN</span></div></td>
-                        <td class="num col-fpa" data-v="24.1"><div class="dfs-points avoid">24.1</div></td>
+                        <td class="col-team"><div class="team-name dvp-pop-anchor"><img class="dvp-team-logo" src="/images/logos/nfl/min.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Minnesota Vikings</span><span class="dvp-team-abbr">MIN</span></div></td>
+                                                <td class="col-week" data-v="10">
+                                                        <div class="dvp-week">
+                                <span class="dvp-week-opp">vs IND</span>
+                                                                <span class="dvp-week-who"><a class="dvp-week-player" href="/nfl/nfl-fantasy-football-player-props/?team=IND" data-ga-cta="dvp_week_props" title="IND props board">Keenan Allen</a> <span class="dvp-week-proj" title="DraftKings projection">10.0</span></span>
+                                                            </div>
+                                                    </td>
+                                                <td class="num col-fpa" data-v="24.1"><div class="dfs-points avoid">24.1</div></td>
                         <td class="num hide-mobile" data-v="18.9">18.9</td>
-                        <td class="num" data-v="-8.2">
+                        <td class="num col-vsavg" data-v="-8.2">
                             <div class="vs-avg negative">
                                 -8.2                            </div>
                         </td>
@@ -43,15 +69,35 @@
                             <div class="trend-indicator">
                                                                     <svg class="de-i de-i-arrow-down trend-better" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><title>Tightening up lately</title><path d="M12 5v14" /> <path d="m19 12-7 7-7-7" /></svg>                                                            </div>
                         </td>
+                        <td class="col-more">
+                            <button type="button" class="dvp-more-btn" aria-expanded="false" aria-label="More on Minnesota Vikings vs WRs" title="Last five games, this week, and links"><svg class="de-i de-i-chevron-down" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6" /></svg></button>
+                        </td>
                     </tr>
-<tr>
-                        <td data-v="2">
+<tr id="dvp-kc" class="dvp-row"
+                        data-dvp-team="KC"
+                        data-dvp-name="Kansas City Chiefs"
+                        data-dvp-pos="WR"
+                        data-dvp-rank="2"
+                        data-dvp-teams="32"
+                        data-dvp-vsavg="-7.3"
+                        data-dvp-week="@ SEA: Jaxon Smith-Njigba 22.5 proj"
+                        data-dvp-opp="SEA"
+                        data-dvp-player="Jaxon Smith-Njigba"
+                        data-dvp-proj="22.5"
+                        data-dvp-gb="/nfl/game/kc-sea-2026-10-25/">
+                        <td class="col-rank" data-v="2">
                             <div class="rank-badge avoid">2</div>
                         </td>
-                        <td><div class="team-name"><img class="dvp-team-logo" src="/images/logos/nfl/kc.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Kansas City Chiefs</span><span class="dvp-team-abbr">KC</span></div></td>
-                        <td class="num col-fpa" data-v="25"><div class="dfs-points avoid">25.0</div></td>
+                        <td class="col-team"><div class="team-name dvp-pop-anchor"><img class="dvp-team-logo" src="/images/logos/nfl/kc.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Kansas City Chiefs</span><span class="dvp-team-abbr">KC</span></div></td>
+                                                <td class="col-week" data-v="22.5">
+                                                        <div class="dvp-week">
+                                <span class="dvp-week-opp">@ SEA</span>
+                                                                <span class="dvp-week-who"><a class="dvp-week-player" href="/nfl/nfl-fantasy-football-player-props/?team=SEA" data-ga-cta="dvp_week_props" title="SEA props board">Jaxon Smith-Njigba</a> <span class="dvp-week-proj" title="DraftKings projection">22.5</span></span>
+                                                            </div>
+                                                    </td>
+                                                <td class="num col-fpa" data-v="25"><div class="dfs-points avoid">25.0</div></td>
                         <td class="num hide-mobile" data-v="19.4">19.4</td>
-                        <td class="num" data-v="-7.3">
+                        <td class="num col-vsavg" data-v="-7.3">
                             <div class="vs-avg negative">
                                 -7.3                            </div>
                         </td>
@@ -67,15 +113,35 @@
                             <div class="trend-indicator">
                                                                     <svg class="de-i de-i-arrow-down trend-better" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><title>Tightening up lately</title><path d="M12 5v14" /> <path d="m19 12-7 7-7-7" /></svg>                                                            </div>
                         </td>
+                        <td class="col-more">
+                            <button type="button" class="dvp-more-btn" aria-expanded="false" aria-label="More on Kansas City Chiefs vs WRs" title="Last five games, this week, and links"><svg class="de-i de-i-chevron-down" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6" /></svg></button>
+                        </td>
                     </tr>
-<tr>
-                        <td data-v="3">
+<tr id="dvp-sea" class="dvp-row"
+                        data-dvp-team="SEA"
+                        data-dvp-name="Seattle Seahawks"
+                        data-dvp-pos="WR"
+                        data-dvp-rank="3"
+                        data-dvp-teams="32"
+                        data-dvp-vsavg="-6.7"
+                        data-dvp-week="vs KC: Xavier Worthy 12.7 proj"
+                        data-dvp-opp="KC"
+                        data-dvp-player="Xavier Worthy"
+                        data-dvp-proj="12.7"
+                        data-dvp-gb="/nfl/game/kc-sea-2026-10-25/">
+                        <td class="col-rank" data-v="3">
                             <div class="rank-badge avoid">3</div>
                         </td>
-                        <td><div class="team-name"><img class="dvp-team-logo" src="/images/logos/nfl/sea.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Seattle Seahawks</span><span class="dvp-team-abbr">SEA</span></div></td>
-                        <td class="num col-fpa" data-v="25.6"><div class="dfs-points avoid">25.6</div></td>
+                        <td class="col-team"><div class="team-name dvp-pop-anchor"><img class="dvp-team-logo" src="/images/logos/nfl/sea.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Seattle Seahawks</span><span class="dvp-team-abbr">SEA</span></div></td>
+                                                <td class="col-week" data-v="12.7">
+                                                        <div class="dvp-week">
+                                <span class="dvp-week-opp">vs KC</span>
+                                                                <span class="dvp-week-who"><a class="dvp-week-player" href="/nfl/nfl-fantasy-football-player-props/?team=KC" data-ga-cta="dvp_week_props" title="KC props board">Xavier Worthy</a> <span class="dvp-week-proj" title="DraftKings projection">12.7</span></span>
+                                                            </div>
+                                                    </td>
+                                                <td class="num col-fpa" data-v="25.6"><div class="dfs-points avoid">25.6</div></td>
                         <td class="num hide-mobile" data-v="19.8">19.8</td>
-                        <td class="num" data-v="-6.7">
+                        <td class="num col-vsavg" data-v="-6.7">
                             <div class="vs-avg negative">
                                 -6.7                            </div>
                         </td>
@@ -91,15 +157,35 @@
                             <div class="trend-indicator">
                                                                     <svg class="de-i de-i-arrow-up trend-worse" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><title>Allowing more lately (good for offense)</title><path d="m5 12 7-7 7 7" /> <path d="M12 19V5" /></svg>                                                            </div>
                         </td>
+                        <td class="col-more">
+                            <button type="button" class="dvp-more-btn" aria-expanded="false" aria-label="More on Seattle Seahawks vs WRs" title="Last five games, this week, and links"><svg class="de-i de-i-chevron-down" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6" /></svg></button>
+                        </td>
                     </tr>
-<tr>
-                        <td data-v="8">
+<tr id="dvp-la" class="dvp-row"
+                        data-dvp-team="LA"
+                        data-dvp-name="Los Angeles Rams"
+                        data-dvp-pos="WR"
+                        data-dvp-rank="8"
+                        data-dvp-teams="32"
+                        data-dvp-vsavg="-2.7"
+                        data-dvp-week="@ LV: Tre Tucker 10.6 proj"
+                        data-dvp-opp="LV"
+                        data-dvp-player="Tre Tucker"
+                        data-dvp-proj="10.6"
+                        data-dvp-gb="/nfl/game/la-lv-2026-10-25/">
+                        <td class="col-rank" data-v="8">
                             <div class="rank-badge avoid">8</div>
                         </td>
-                        <td><div class="team-name"><img class="dvp-team-logo" src="/images/logos/nfl/lar.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Los Angeles Rams</span><span class="dvp-team-abbr">LA</span></div></td>
-                        <td class="num col-fpa" data-v="29.6"><div class="dfs-points avoid">29.6</div></td>
+                        <td class="col-team"><div class="team-name dvp-pop-anchor"><img class="dvp-team-logo" src="/images/logos/nfl/lar.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Los Angeles Rams</span><span class="dvp-team-abbr">LA</span></div></td>
+                                                <td class="col-week" data-v="10.6">
+                                                        <div class="dvp-week">
+                                <span class="dvp-week-opp">@ LV</span>
+                                                                <span class="dvp-week-who"><a class="dvp-week-player" href="/nfl/nfl-fantasy-football-player-props/?team=LV" data-ga-cta="dvp_week_props" title="LV props board">Tre Tucker</a> <span class="dvp-week-proj" title="DraftKings projection">10.6</span></span>
+                                                            </div>
+                                                    </td>
+                                                <td class="num col-fpa" data-v="29.6"><div class="dfs-points avoid">29.6</div></td>
                         <td class="num hide-mobile" data-v="24.2">24.2</td>
-                        <td class="num" data-v="-2.7">
+                        <td class="num col-vsavg" data-v="-2.7">
                             <div class="vs-avg negative">
                                 -2.7                            </div>
                         </td>
@@ -115,15 +201,35 @@
                             <div class="trend-indicator">
                                                                     <svg class="de-i de-i-arrow-down trend-better" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><title>Tightening up lately</title><path d="M12 5v14" /> <path d="m19 12-7 7-7-7" /></svg>                                                            </div>
                         </td>
+                        <td class="col-more">
+                            <button type="button" class="dvp-more-btn" aria-expanded="false" aria-label="More on Los Angeles Rams vs WRs" title="Last five games, this week, and links"><svg class="de-i de-i-chevron-down" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6" /></svg></button>
+                        </td>
                     </tr>
-<tr>
-                        <td data-v="23">
+<tr id="dvp-hou" class="dvp-row"
+                        data-dvp-team="HOU"
+                        data-dvp-name="Houston Texans"
+                        data-dvp-pos="WR"
+                        data-dvp-rank="23"
+                        data-dvp-teams="32"
+                        data-dvp-vsavg="+3.1"
+                        data-dvp-week="vs NYG: Malik Nabers 13.1 proj"
+                        data-dvp-opp="NYG"
+                        data-dvp-player="Malik Nabers"
+                        data-dvp-proj="13.1"
+                        data-dvp-gb="">
+                        <td class="col-rank" data-v="23">
                             <div class="rank-badge good">23</div>
                         </td>
-                        <td><div class="team-name"><img class="dvp-team-logo" src="/images/logos/nfl/hou.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Houston Texans</span><span class="dvp-team-abbr">HOU</span></div></td>
-                        <td class="num col-fpa" data-v="35.4"><div class="dfs-points good">35.4</div></td>
+                        <td class="col-team"><div class="team-name dvp-pop-anchor"><img class="dvp-team-logo" src="/images/logos/nfl/hou.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Houston Texans</span><span class="dvp-team-abbr">HOU</span></div></td>
+                                                <td class="col-week" data-v="13.1">
+                                                        <div class="dvp-week">
+                                <span class="dvp-week-opp">vs NYG</span>
+                                                                <span class="dvp-week-who"><a class="dvp-week-player" href="/nfl/nfl-fantasy-football-player-props/?team=NYG" data-ga-cta="dvp_week_props" title="NYG props board">Malik Nabers</a> <span class="dvp-week-proj" title="DraftKings projection">13.1</span></span>
+                                                            </div>
+                                                    </td>
+                                                <td class="num col-fpa" data-v="35.4"><div class="dfs-points good">35.4</div></td>
                         <td class="num hide-mobile" data-v="28.2">28.2</td>
-                        <td class="num" data-v="3.1">
+                        <td class="num col-vsavg" data-v="3.1">
                             <div class="vs-avg positive">
                                 +3.1                            </div>
                         </td>
@@ -139,15 +245,35 @@
                             <div class="trend-indicator">
                                                                     <svg class="de-i de-i-minus trend-stable" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><title>Stable</title><path d="M5 12h14" /></svg>                                                            </div>
                         </td>
+                        <td class="col-more">
+                            <button type="button" class="dvp-more-btn" aria-expanded="false" aria-label="More on Houston Texans vs WRs" title="Last five games, this week, and links"><svg class="de-i de-i-chevron-down" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6" /></svg></button>
+                        </td>
                     </tr>
-<tr>
-                        <td data-v="30">
+<tr id="dvp-atl" class="dvp-row"
+                        data-dvp-team="ATL"
+                        data-dvp-name="Atlanta Falcons"
+                        data-dvp-pos="WR"
+                        data-dvp-rank="30"
+                        data-dvp-teams="32"
+                        data-dvp-vsavg="+5.8"
+                        data-dvp-week="vs SF: Christian Kirk 7.5 proj"
+                        data-dvp-opp="SF"
+                        data-dvp-player="Christian Kirk"
+                        data-dvp-proj="7.5"
+                        data-dvp-gb="/nfl/game/sf-atl-2026-10-25/">
+                        <td class="col-rank" data-v="30">
                             <div class="rank-badge elite">30</div>
                         </td>
-                        <td><div class="team-name"><img class="dvp-team-logo" src="/images/logos/nfl/atl.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Atlanta Falcons</span><span class="dvp-team-abbr">ATL</span></div></td>
-                        <td class="num col-fpa" data-v="38.1"><div class="dfs-points elite">38.1</div></td>
+                        <td class="col-team"><div class="team-name dvp-pop-anchor"><img class="dvp-team-logo" src="/images/logos/nfl/atl.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Atlanta Falcons</span><span class="dvp-team-abbr">ATL</span></div></td>
+                                                <td class="col-week" data-v="7.5">
+                                                        <div class="dvp-week">
+                                <span class="dvp-week-opp">vs SF</span>
+                                                                <span class="dvp-week-who"><a class="dvp-week-player" href="/nfl/nfl-fantasy-football-player-props/?team=SF" data-ga-cta="dvp_week_props" title="SF props board">Christian Kirk</a> <span class="dvp-week-proj" title="DraftKings projection">7.5</span></span>
+                                                            </div>
+                                                    </td>
+                                                <td class="num col-fpa" data-v="38.1"><div class="dfs-points elite">38.1</div></td>
                         <td class="num hide-mobile" data-v="29.9">29.9</td>
-                        <td class="num" data-v="5.8">
+                        <td class="num col-vsavg" data-v="5.8">
                             <div class="vs-avg positive">
                                 +5.8                            </div>
                         </td>
@@ -163,15 +289,35 @@
                             <div class="trend-indicator">
                                                                     <svg class="de-i de-i-arrow-up trend-worse" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><title>Allowing more lately (good for offense)</title><path d="m5 12 7-7 7 7" /> <path d="M12 19V5" /></svg>                                                            </div>
                         </td>
+                        <td class="col-more">
+                            <button type="button" class="dvp-more-btn" aria-expanded="false" aria-label="More on Atlanta Falcons vs WRs" title="Last five games, this week, and links"><svg class="de-i de-i-chevron-down" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6" /></svg></button>
+                        </td>
                     </tr>
-<tr>
-                        <td data-v="31">
+<tr id="dvp-dal" class="dvp-row"
+                        data-dvp-team="DAL"
+                        data-dvp-name="Dallas Cowboys"
+                        data-dvp-pos="WR"
+                        data-dvp-rank="31"
+                        data-dvp-teams="32"
+                        data-dvp-vsavg="+6.8"
+                        data-dvp-week="@ PHI: DeVonta Smith 11.6 proj"
+                        data-dvp-opp="PHI"
+                        data-dvp-player="DeVonta Smith"
+                        data-dvp-proj="11.6"
+                        data-dvp-gb="">
+                        <td class="col-rank" data-v="31">
                             <div class="rank-badge elite">31</div>
                         </td>
-                        <td><div class="team-name"><img class="dvp-team-logo" src="/images/logos/nfl/dal.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Dallas Cowboys</span><span class="dvp-team-abbr">DAL</span></div></td>
-                        <td class="num col-fpa" data-v="39.1"><div class="dfs-points elite">39.1</div></td>
+                        <td class="col-team"><div class="team-name dvp-pop-anchor"><img class="dvp-team-logo" src="/images/logos/nfl/dal.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Dallas Cowboys</span><span class="dvp-team-abbr">DAL</span></div></td>
+                                                <td class="col-week" data-v="11.6">
+                                                        <div class="dvp-week">
+                                <span class="dvp-week-opp">@ PHI</span>
+                                                                <span class="dvp-week-who"><a class="dvp-week-player" href="/nfl/nfl-fantasy-football-player-props/?team=PHI" data-ga-cta="dvp_week_props" title="PHI props board">DeVonta Smith</a> <span class="dvp-week-proj" title="DraftKings projection">11.6</span></span>
+                                                            </div>
+                                                    </td>
+                                                <td class="num col-fpa" data-v="39.1"><div class="dfs-points elite">39.1</div></td>
                         <td class="num hide-mobile" data-v="31.9">31.9</td>
-                        <td class="num" data-v="6.8">
+                        <td class="num col-vsavg" data-v="6.8">
                             <div class="vs-avg positive">
                                 +6.8                            </div>
                         </td>
@@ -187,15 +333,35 @@
                             <div class="trend-indicator">
                                                                     <svg class="de-i de-i-arrow-up trend-worse" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><title>Allowing more lately (good for offense)</title><path d="m5 12 7-7 7 7" /> <path d="M12 19V5" /></svg>                                                            </div>
                         </td>
+                        <td class="col-more">
+                            <button type="button" class="dvp-more-btn" aria-expanded="false" aria-label="More on Dallas Cowboys vs WRs" title="Last five games, this week, and links"><svg class="de-i de-i-chevron-down" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6" /></svg></button>
+                        </td>
                     </tr>
-<tr>
-                        <td data-v="32">
+<tr id="dvp-det" class="dvp-row"
+                        data-dvp-team="DET"
+                        data-dvp-name="Detroit Lions"
+                        data-dvp-pos="WR"
+                        data-dvp-rank="32"
+                        data-dvp-teams="32"
+                        data-dvp-vsavg="+7.0"
+                        data-dvp-week="vs GB: Christian Watson 15.6 proj"
+                        data-dvp-opp="GB"
+                        data-dvp-player="Christian Watson"
+                        data-dvp-proj="15.6"
+                        data-dvp-gb="/nfl/game/gb-det-2026-10-25/">
+                        <td class="col-rank" data-v="32">
                             <div class="rank-badge elite">32</div>
                         </td>
-                        <td><div class="team-name"><img class="dvp-team-logo" src="/images/logos/nfl/det.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Detroit Lions</span><span class="dvp-team-abbr">DET</span></div></td>
-                        <td class="num col-fpa" data-v="39.3"><div class="dfs-points elite">39.3</div></td>
+                        <td class="col-team"><div class="team-name dvp-pop-anchor"><img class="dvp-team-logo" src="/images/logos/nfl/det.png" alt="" width="31" height="20" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='/images/logos/nfl/default.png'"><span class="dvp-team-label">Detroit Lions</span><span class="dvp-team-abbr">DET</span></div></td>
+                                                <td class="col-week" data-v="15.6">
+                                                        <div class="dvp-week">
+                                <span class="dvp-week-opp">vs GB</span>
+                                                                <span class="dvp-week-who"><a class="dvp-week-player" href="/nfl/nfl-fantasy-football-player-props/?team=GB" data-ga-cta="dvp_week_props" title="GB props board">Christian Watson</a> <span class="dvp-week-proj" title="DraftKings projection">15.6</span></span>
+                                                            </div>
+                                                    </td>
+                                                <td class="num col-fpa" data-v="39.3"><div class="dfs-points elite">39.3</div></td>
                         <td class="num hide-mobile" data-v="31.3">31.3</td>
-                        <td class="num" data-v="7">
+                        <td class="num col-vsavg" data-v="7">
                             <div class="vs-avg positive">
                                 +7.0                            </div>
                         </td>
@@ -211,7 +377,10 @@
                             <div class="trend-indicator">
                                                                     <svg class="de-i de-i-minus trend-stable" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><title>Stable</title><path d="M5 12h14" /></svg>                                                            </div>
                         </td>
+                        <td class="col-more">
+                            <button type="button" class="dvp-more-btn" aria-expanded="false" aria-label="More on Detroit Lions vs WRs" title="Last five games, this week, and links"><svg class="de-i de-i-chevron-down" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6" /></svg></button>
+                        </td>
                     </tr>
-</tbody>
-</table>
+            </tbody>
+        </table>
 </body></html>

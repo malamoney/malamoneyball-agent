@@ -86,7 +86,7 @@ def test_each_position_is_saved_separately(fake_draftedge, clock, data_dir):
 def renamed_column(fake_draftedge):
     page = fake_draftedge.pages["RB"]
     assert isinstance(page, str)
-    return page.replace(">L4<", ">Last 4<")
+    return page.replace(">Last 4<", ">Last 5<")
 
 
 @pytest.mark.parametrize(
@@ -94,7 +94,7 @@ def renamed_column(fake_draftedge):
     [
         ("unreachable", "Could not reach DraftEdge"),
         ("http_error", "DraftEdge returned HTTP 503"),
-        ("changed_page", "exactly one L4 column"),
+        ("changed_page", "exactly one Last 4 or L4 column"),
     ],
 )
 def test_a_failed_download_uses_the_saved_copy_marked_stale(
@@ -221,7 +221,7 @@ def test_a_copy_saved_before_only_the_points_were_read_still_loads(
         json.dumps(
             {
                 "downloaded_at": TUESDAY.isoformat(),
-                "html": (FIXTURES / "draftedge_rb.html").read_text(),
+                "html": (FIXTURES / "draftedge_rb_old_layout.html").read_text(),
             }
         )
     )
@@ -230,3 +230,49 @@ def test_a_copy_saved_before_only_the_points_were_read_still_loads(
 
     assert fake_draftedge.requests_made == 0
     assert output["defenses"][0]["draftkings_points_this_season"] == 17.3
+
+
+def save_old_layout_copy(data_dir, downloaded_at):
+    """A copy saved before DraftEdge's redesign on 2026-10-24."""
+    path = saved_file(data_dir)
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        json.dumps(
+            {
+                "downloaded_at": downloaded_at.isoformat(),
+                "html": (FIXTURES / "draftedge_rb_old_layout.html").read_text(),
+            }
+        )
+    )
+
+
+def test_an_old_layout_copy_is_replaced_by_the_redesigned_page(
+    fake_draftedge, clock, data_dir
+):
+    save_old_layout_copy(data_dir, TUESDAY)
+    clock.now = TUESDAY + timedelta(hours=12)
+
+    output = fake_draftedge({"position": "RB", "team": "JAX"})
+
+    assert fake_draftedge.requests_made == 1
+    assert output["sources"]["draftedge"]["stale"] is False
+    assert output["defenses"][0]["draftkings_points_this_season"] == 17.3
+    assert ">Last 4<" in json.loads(saved_file(data_dir).read_text())["html"]
+
+
+def test_an_old_layout_copy_is_used_stale_if_the_redesigned_page_fails(
+    fake_draftedge, clock, data_dir
+):
+    save_old_layout_copy(data_dir, TUESDAY)
+    clock.now = TUESDAY + timedelta(days=3)
+    fake_draftedge.pages["RB"] = renamed_column(fake_draftedge)
+
+    output = fake_draftedge({"position": "RB", "team": "JAX"})
+
+    assert output["sources"]["draftedge"]["stale"] is True
+    assert (
+        "exactly one Last 4 or L4 column"
+        in (output["sources"]["draftedge"]["stale_reason"])
+    )
+    assert output["defenses"][0]["draftkings_points_this_season"] == 17.3
+    assert output["defenses"][0]["draftkings_points_last_4_games"] == 17.0
